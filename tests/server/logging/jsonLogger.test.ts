@@ -1,0 +1,82 @@
+import { describe, expect, it, vi } from "vitest";
+import {
+  createJsonLogger,
+  redactValue,
+} from "../../../src/server/logging/jsonLogger";
+
+describe("jsonLogger", () => {
+  it("redacts sensitive keys", () => {
+    expect(
+      redactValue({
+        apiKey: "secret",
+        OPENAI_API_KEY: "sk-test",
+        api_key: "snake-secret",
+        nested: { token: "abc" },
+      }),
+    ).toEqual({
+      apiKey: "[redacted]",
+      OPENAI_API_KEY: "[redacted]",
+      api_key: "[redacted]",
+      nested: { token: "[redacted]" },
+    });
+  });
+
+  it("omits base64 image fields", () => {
+    expect(
+      redactValue({
+        b64_json: "abc123",
+        base64: "abc123",
+        image_base64: "abc123",
+      }),
+    ).toEqual({
+      b64_json: "[omitted]",
+      base64: "[omitted]",
+      image_base64: "[omitted]",
+    });
+  });
+
+  it("truncates large payloads as a whole", () => {
+    const redacted = redactValue(
+      Object.fromEntries(
+        Array.from({ length: 40 }, (_, index) => [`field${index}`, "x".repeat(300)]),
+      ),
+      { maxSerializedBytes: 1024 },
+    );
+
+    expect(redacted).toEqual({
+      truncated: true,
+      preview: expect.any(String),
+    });
+    expect(JSON.stringify(redacted).length).toBeLessThan(1200);
+  });
+
+  it("writes one JSON log line", () => {
+    const sink = vi.fn();
+    const logger = createJsonLogger({ sink });
+    logger.info("api.request.started", {
+      requestHeaders: {
+        authorization: "Bearer key",
+        "content-type": "application/json",
+      },
+    });
+    const parsed = JSON.parse(sink.mock.calls[0][0]);
+    expect(parsed.event).toBe("api.request.started");
+    expect(parsed.requestHeaders.authorization).toBe("[redacted]");
+  });
+
+  it("does not allow fields to override core log metadata", () => {
+    const sink = vi.fn();
+    const logger = createJsonLogger({ sink });
+
+    logger.info("api.request.started", {
+      event: "wrong.event",
+      level: "error",
+      time: "2000-01-01T00:00:00.000Z",
+    });
+
+    const parsed = JSON.parse(sink.mock.calls[0][0]);
+    expect(parsed.event).toBe("api.request.started");
+    expect(parsed.level).toBe("info");
+    expect(parsed.time).not.toBe("2000-01-01T00:00:00.000Z");
+  });
+});
