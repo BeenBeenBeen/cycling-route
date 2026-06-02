@@ -2,11 +2,16 @@ import express from "express";
 import { createJsonLogger } from "./logging/jsonLogger";
 import { createRequestLogger } from "./logging/requestLogger";
 import {
+  createGenerateCoverHandler,
+  type GenerateCover,
+} from "./routes/generateCoverRoute";
+import {
   createGeneratePostHandler,
   type GeneratePost,
 } from "./routes/generatePostRoute";
 
 export type AppDependencies = {
+  generateCover?: GenerateCover;
   generatePost?: GeneratePost;
 };
 
@@ -21,6 +26,10 @@ export const createApp = (dependencies: AppDependencies = {}) => {
 
   if (dependencies.generatePost) {
     app.post("/api/generate-post", createGeneratePostHandler(dependencies.generatePost));
+  }
+
+  if (dependencies.generateCover) {
+    app.post("/api/generate-cover", createGenerateCoverHandler(dependencies.generateCover));
   }
 
   return app;
