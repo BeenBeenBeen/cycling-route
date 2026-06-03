@@ -22,14 +22,20 @@ const validBody = {
 };
 
 describe("createGenerateCoverHandler", () => {
-  it("returns a cover path for valid input", async () => {
-    const generateCover = vi.fn().mockResolvedValue({ coverPath: "/tmp/cover.png" });
+  it("returns a cover path and browser-accessible URL for valid input", async () => {
+    const generateCover = vi.fn().mockResolvedValue({
+      coverPath: "/tmp/cover.png",
+      coverUrl: "/media/images/cover.png",
+    });
     const { req, res } = mockHttp(validBody);
 
     await createGenerateCoverHandler(generateCover)(req, res);
 
     expect(res.statusCode).toBe(200);
-    expect(res.body).toEqual({ coverPath: "/tmp/cover.png" });
+    expect(res.body).toEqual({
+      coverPath: "/tmp/cover.png",
+      coverUrl: "/media/images/cover.png",
+    });
     expect(generateCover).toHaveBeenCalledWith(validBody);
   });
 

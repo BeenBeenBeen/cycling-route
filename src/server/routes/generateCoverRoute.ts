@@ -27,7 +27,10 @@ export const createGenerateCoverHandler =
     try {
       const input = coverPosterRequestSchema.parse(req.body);
       const result = await generateCover(input);
-      return res.json({ coverPath: result.coverPath });
+      return res.json({
+        coverPath: result.coverPath,
+        coverUrl: result.coverUrl,
+      });
     } catch (error) {
       if (error instanceof ZodError) {
         return res.status(400).json({

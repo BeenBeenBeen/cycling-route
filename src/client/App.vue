@@ -24,6 +24,7 @@ const route = ref<RouteInput | null>(null);
 const generatedPost = ref<GeneratedPost | null>(null);
 const selectedTitle = ref("");
 const coverPath = ref("");
+const coverUrl = ref("");
 const markdownPath = ref("");
 const loadingAction = ref<LoadingAction>("");
 const errorMessage = ref("");
@@ -72,6 +73,7 @@ const onGeneratePost = () =>
     generatedPost.value = result.post;
     selectedTitle.value = result.post.titleCandidates[0] ?? "";
     coverPath.value = "";
+    coverUrl.value = "";
     markdownPath.value = "";
     publishStarted.value = false;
   });
@@ -81,7 +83,7 @@ const onGenerateCover = () =>
     if (!generatedPost.value) {
       throw new Error("缺少生成内容");
     }
-    const baseRoute = route.value ?? currentRoute();
+    const baseRoute = currentRoute();
     const result = await generateCover({
       route: baseRoute,
       imagePrompt: generatedPost.value.imagePrompt,
@@ -89,6 +91,7 @@ const onGenerateCover = () =>
       coverSubtitle: generatedPost.value.coverSubtitle,
     });
     coverPath.value = result.coverPath;
+    coverUrl.value = result.coverUrl;
   });
 
 const onSaveMarkdown = () =>
@@ -97,7 +100,7 @@ const onSaveMarkdown = () =>
       throw new Error("缺少生成内容");
     }
     const result = await saveMarkdown({
-      route: route.value ?? currentRoute(),
+      route: currentRoute(),
       post: generatedPost.value,
       selectedTitle: selectedTitle.value,
       coverPath: coverPath.value || undefined,
@@ -144,7 +147,7 @@ const onAssistPublish = () =>
       </section>
       <aside class="side-column">
         <CoverPreview
-          :cover-path="coverPath"
+          :cover-path="coverUrl"
           :loading="loadingAction === 'generateCover'"
           :error="loadingAction ? '' : errorDetail"
         />

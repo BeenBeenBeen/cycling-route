@@ -17,7 +17,10 @@ const route = {
 describe("createGenerateCoverUseCase", () => {
   it("generates a background and composes the final cover", async () => {
     const generateBackground = vi.fn().mockResolvedValue("/tmp/background.png");
-    const composeCover = vi.fn().mockResolvedValue({ coverPath: "/tmp/cover.png" });
+    const composeCover = vi.fn().mockResolvedValue({
+      coverPath: "/tmp/cover.png",
+      coverUrl: "/media/images/cover.png",
+    });
     const useCase = createGenerateCoverUseCase({ generateBackground, composeCover });
 
     const result = await useCase({
@@ -27,7 +30,10 @@ describe("createGenerateCoverUseCase", () => {
       coverSubtitle: "82km / 620m",
     });
 
-    expect(result).toEqual({ coverPath: "/tmp/cover.png" });
+    expect(result).toEqual({
+      coverPath: "/tmp/cover.png",
+      coverUrl: "/media/images/cover.png",
+    });
     expect(generateBackground).toHaveBeenCalledWith(
       "Strava-like cycling poster background, no text",
     );

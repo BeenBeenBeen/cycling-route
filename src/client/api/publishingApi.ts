@@ -38,6 +38,11 @@ export type GenerateCoverPayload = {
   coverSubtitle: string;
 };
 
+export type GenerateCoverResponse = {
+  coverPath: string;
+  coverUrl: string;
+};
+
 export type SaveMarkdownPayload = {
   route: RouteInput;
   post: GeneratedPost;
@@ -94,7 +99,7 @@ export const generatePost = (route: RouteInput) =>
   requestJson<{ post: GeneratedPost }>("/api/generate-post", route);
 
 export const generateCover = (payload: GenerateCoverPayload) =>
-  requestJson<{ coverPath: string }>("/api/generate-cover", payload);
+  requestJson<GenerateCoverResponse>("/api/generate-cover", payload);
 
 export const saveMarkdown = (payload: SaveMarkdownPayload) =>
   requestJson<{ markdownPath: string }>("/api/save-markdown", payload);

@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { generatePost, PublishingApiError } from "../../src/client/api/publishingApi";
+import {
+  generateCover,
+  generatePost,
+  PublishingApiError,
+} from "../../src/client/api/publishingApi";
 
 const route = {
   routeName: "成都到青城山周末骑行",
@@ -55,5 +59,28 @@ describe("publishingApi", () => {
     await expect(generatePost(route as any)).rejects.toBeInstanceOf(
       PublishingApiError,
     );
+  });
+
+  it("returns cover path and URL for cover generation", async () => {
+    const response = {
+      coverPath: "/tmp/cover.png",
+      coverUrl: "/media/images/cover.png",
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue(response),
+      }),
+    );
+
+    await expect(
+      generateCover({
+        route: route as any,
+        imagePrompt: "poster",
+        coverTitle: "成都到青城山",
+        coverSubtitle: "82km / 620m",
+      }),
+    ).resolves.toEqual(response);
   });
 });

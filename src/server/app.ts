@@ -32,6 +32,7 @@ export const createApp = (dependencies: AppDependencies = {}) => {
   const logger =
     dependencies.logger ?? createJsonLogger({ level: dependencies.logLevel ?? "info" });
   app.use(express.json({ limit: "10mb" }));
+  app.use("/media/images", express.static("data/images"));
   app.use(createRequestLogger(logger));
   app.get("/api/health", (_req, res) => {
     res.json({ ok: true });

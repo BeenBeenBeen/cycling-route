@@ -43,6 +43,7 @@ describe("composeCoverPoster", () => {
     });
 
     expect(result.coverPath).toMatch(/cover-.*\.png$/);
+    expect(result.coverUrl).toMatch(/^\/media\/images\/cover-.*\.png$/);
     const file = await stat(result.coverPath);
     expect(file.size).toBeGreaterThan(0);
 

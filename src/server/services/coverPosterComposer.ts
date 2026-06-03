@@ -13,6 +13,7 @@ export type ComposeCoverPosterInput = {
 
 export type ComposeCoverPosterResult = {
   coverPath: string;
+  coverUrl: string;
 };
 
 const escapeXml = (value: string) =>
@@ -79,5 +80,5 @@ export const composeCoverPoster = async ({
     .png()
     .toFile(coverPath);
 
-  return { coverPath };
+  return { coverPath, coverUrl: `/media/images/${filename}` };
 };

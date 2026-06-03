@@ -30,7 +30,10 @@ describe("app API route wiring", () => {
     const dependencies = {
       logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
       generatePost: vi.fn().mockResolvedValue(post),
-      generateCover: vi.fn().mockResolvedValue({ coverPath: "/tmp/cover.png" }),
+      generateCover: vi.fn().mockResolvedValue({
+        coverPath: "/tmp/cover.png",
+        coverUrl: "/media/images/cover.png",
+      }),
       saveMarkdown: vi.fn().mockResolvedValue({ markdownPath: "/tmp/post.md" }),
       assistPublish: vi.fn().mockResolvedValue({ ok: true }),
     };
@@ -53,7 +56,10 @@ describe("app API route wiring", () => {
       }),
     ).toMatchObject({
       statusCode: 200,
-      body: { coverPath: "/tmp/cover.png" },
+      body: {
+        coverPath: "/tmp/cover.png",
+        coverUrl: "/media/images/cover.png",
+      },
     });
     expect(
       await invoke(app, "post", "/api/save-markdown", {
