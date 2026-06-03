@@ -2,6 +2,8 @@ import { ZodError } from "zod";
 import { publishDraftSchema } from "../domain/publishDraft";
 import type { AssistPublish } from "../useCases/assistPublishUseCase";
 
+export type { AssistPublish };
+
 type HandlerRequest = {
   body: unknown;
 };

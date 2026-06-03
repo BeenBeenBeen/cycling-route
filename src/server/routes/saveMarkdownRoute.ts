@@ -4,6 +4,8 @@ import {
   type SaveMarkdown,
 } from "../useCases/saveMarkdownUseCase";
 
+export type { SaveMarkdown };
+
 type HandlerRequest = {
   body: unknown;
 };
