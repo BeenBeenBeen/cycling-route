@@ -48,9 +48,17 @@ export const createXiaohongshuPublisher = ({
     throw new Error("XIAOHONGSHU_PUBLISH_URL is required");
   }
 
+  let contextPromise: Promise<BrowserContextLike> | undefined;
+  let pagePromise: Promise<PageLike> | undefined;
+
+  const getPage = async () => {
+    contextPromise ??= launchContext(userDataDir, { headless: false });
+    pagePromise ??= contextPromise.then((context) => context.newPage());
+    return pagePromise;
+  };
+
   return async (draft: PublishDraft): Promise<AssistPublishResult> => {
-    const context = await launchContext(userDataDir, { headless: false });
-    const page = await context.newPage();
+    const page = await getPage();
 
     await page.goto(publishUrl, { waitUntil: "domcontentloaded" });
     await page.setInputFiles(selectors.uploadInput, draft.coverPath);

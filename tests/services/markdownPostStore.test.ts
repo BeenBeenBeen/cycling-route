@@ -62,4 +62,35 @@ describe("saveMarkdownPost", () => {
       await rm(outputDir, { recursive: true, force: true });
     }
   });
+
+  it("does not overwrite an existing draft with the same route and minute", async () => {
+    const outputDir = await mkdtemp(path.join(os.tmpdir(), "cycling-post-"));
+    const now = new Date(2026, 5, 3, 1, 2, 0);
+    try {
+      const first = await saveMarkdownPost({
+        route,
+        post: { ...post, body: "第一次正文" },
+        selectedTitle: "标题一",
+        outputDir,
+        now,
+      });
+      const second = await saveMarkdownPost({
+        route,
+        post: { ...post, body: "第二次正文" },
+        selectedTitle: "标题二",
+        outputDir,
+        now,
+      });
+
+      expect(first.markdownPath).not.toBe(second.markdownPath);
+      await expect(readFile(first.markdownPath, "utf8")).resolves.toContain(
+        "第一次正文",
+      );
+      await expect(readFile(second.markdownPath, "utf8")).resolves.toContain(
+        "第二次正文",
+      );
+    } finally {
+      await rm(outputDir, { recursive: true, force: true });
+    }
+  });
 });

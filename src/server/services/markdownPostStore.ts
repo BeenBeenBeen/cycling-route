@@ -92,14 +92,28 @@ export const saveMarkdownPost = async ({
   now = new Date(),
 }: SaveMarkdownPostInput): Promise<SaveMarkdownPostResult> => {
   await mkdir(outputDir, { recursive: true });
-  const filename = `${timestampForFilename(now)}-${slugify(route.routeName) || "route"}.md`;
-  const markdownPath = path.join(outputDir, filename);
+  const baseFilename = `${timestampForFilename(now)}-${slugify(route.routeName) || "route"}`;
+  const markdown = renderMarkdown({ route, post, selectedTitle, coverPath, now });
 
-  await writeFile(
-    markdownPath,
-    renderMarkdown({ route, post, selectedTitle, coverPath, now }),
-    "utf8",
-  );
+  for (let attempt = 1; attempt <= 100; attempt += 1) {
+    const suffix = attempt === 1 ? "" : `-${attempt}`;
+    const markdownPath = path.join(outputDir, `${baseFilename}${suffix}.md`);
 
-  return { markdownPath };
+    try {
+      await writeFile(markdownPath, markdown, { encoding: "utf8", flag: "wx" });
+      return { markdownPath };
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        "code" in error &&
+        error.code === "EEXIST"
+      ) {
+        continue;
+      }
+
+      throw error;
+    }
+  }
+
+  throw new Error("Failed to find available markdown filename");
 };
