@@ -9,10 +9,15 @@ import {
   createGeneratePostHandler,
   type GeneratePost,
 } from "./routes/generatePostRoute";
+import {
+  createSaveMarkdownHandler,
+  type SaveMarkdown,
+} from "./routes/saveMarkdownRoute";
 
 export type AppDependencies = {
   generateCover?: GenerateCover;
   generatePost?: GeneratePost;
+  saveMarkdown?: SaveMarkdown;
   logger?: JsonLogger;
   logLevel?: LogLevel;
 };
@@ -33,6 +38,10 @@ export const createApp = (dependencies: AppDependencies = {}) => {
 
   if (dependencies.generateCover) {
     app.post("/api/generate-cover", createGenerateCoverHandler(dependencies.generateCover));
+  }
+
+  if (dependencies.saveMarkdown) {
+    app.post("/api/save-markdown", createSaveMarkdownHandler(dependencies.saveMarkdown));
   }
 
   return app;
