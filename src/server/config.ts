@@ -6,9 +6,12 @@ import type { OpenAIProxyConfig } from "./services/openaiClient";
 export type AppConfig = {
   port: number;
   logLevel: LogLevel;
-  openaiApiKey?: string;
-  openaiTextModel?: string;
-  openaiImageModel?: string;
+  duckcodingTextApiKey?: string;
+  duckcodingImageApiKey?: string;
+  duckcodingBaseUrl?: string;
+  duckcodingTextModel?: string;
+  duckcodingImageModel?: string;
+  duckcodingImageSize?: string;
   proxy: OpenAIProxyConfig;
   xiaohongshuPublishUrl: string;
 };
@@ -21,9 +24,12 @@ const optionalEnv = (value?: string) => {
 export const loadConfig = (): AppConfig => ({
   port: parsePort(process.env.PORT),
   logLevel: parseLogLevel(process.env.LOG_LEVEL),
-  openaiApiKey: optionalEnv(process.env.OPENAI_API_KEY),
-  openaiTextModel: optionalEnv(process.env.OPENAI_TEXT_MODEL),
-  openaiImageModel: optionalEnv(process.env.OPENAI_IMAGE_MODEL),
+  duckcodingTextApiKey: optionalEnv(process.env.DUCKCODING_TEXT_API_KEY),
+  duckcodingImageApiKey: optionalEnv(process.env.DUCKCODING_IMAGE_API_KEY),
+  duckcodingBaseUrl: optionalEnv(process.env.DUCKCODING_BASE_URL),
+  duckcodingTextModel: optionalEnv(process.env.DUCKCODING_TEXT_MODEL),
+  duckcodingImageModel: optionalEnv(process.env.DUCKCODING_IMAGE_MODEL),
+  duckcodingImageSize: optionalEnv(process.env.DUCKCODING_IMAGE_SIZE),
   proxy: {
     httpProxy: optionalEnv(process.env.HTTP_PROXY ?? process.env.http_proxy),
     httpsProxy: optionalEnv(process.env.HTTPS_PROXY ?? process.env.https_proxy),

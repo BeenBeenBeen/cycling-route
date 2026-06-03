@@ -23,9 +23,12 @@ cp .env.example .env
 ```env
 PORT=8787
 LOG_LEVEL=info
-OPENAI_API_KEY=
-OPENAI_TEXT_MODEL=
-OPENAI_IMAGE_MODEL=
+DUCKCODING_BASE_URL=https://www.duckcoding.ai/v1
+DUCKCODING_TEXT_API_KEY=
+DUCKCODING_TEXT_MODEL=gpt-5.5
+DUCKCODING_IMAGE_API_KEY=
+DUCKCODING_IMAGE_MODEL=gpt-image-1
+DUCKCODING_IMAGE_SIZE=1024x1536
 HTTP_PROXY=
 HTTPS_PROXY=
 ALL_PROXY=
@@ -35,11 +38,11 @@ XIAOHONGSHU_PUBLISH_URL=https://creator.xiaohongshu.com/publish/publish
 常用模型示例：
 
 ```env
-OPENAI_TEXT_MODEL=gpt-4.1-mini
-OPENAI_IMAGE_MODEL=gpt-image-1
+DUCKCODING_TEXT_MODEL=gpt-5.5
+DUCKCODING_IMAGE_MODEL=gpt-image-1
 ```
 
-查看请求头、请求 body 和 OpenAI 请求 body：
+查看请求头、请求 body 和 DuckCoding 请求 body：
 
 ```env
 LOG_LEVEL=debug
@@ -110,7 +113,7 @@ data/posts/
 data/browser-profile/
 ```
 
-## OpenAI 额度错误
+## 上游额度错误
 
 如果终端或页面显示：
 
@@ -118,7 +121,7 @@ data/browser-profile/
 Billing hard limit has been reached
 ```
 
-表示 OpenAI 账号到达当前 billing hard limit。需要在 OpenAI 控制台调整额度、充值或更换可用 API key。项目会把该错误作为上游服务失败返回，不会自动重试扣费请求。
+表示上游账号到达当前 billing hard limit。需要在 DuckCoding 控制台调整额度、充值或更换可用 API key。项目会把该错误作为上游服务失败返回，不会自动重试扣费请求。
 
 ## 手动验证
 

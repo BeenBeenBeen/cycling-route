@@ -25,9 +25,15 @@ describe("loadConfig", () => {
     const previousEnv = { ...process.env };
     process.env.PORT = "8788";
     process.env.LOG_LEVEL = "debug";
-    process.env.OPENAI_API_KEY = "sk-test";
-    process.env.OPENAI_TEXT_MODEL = "gpt-test";
-    process.env.OPENAI_IMAGE_MODEL = "gpt-image-test";
+    delete process.env.OPENAI_API_KEY;
+    delete process.env.OPENAI_TEXT_MODEL;
+    delete process.env.NEW_API_KEY;
+    process.env.DUCKCODING_TEXT_API_KEY = "duck-text-key";
+    process.env.DUCKCODING_IMAGE_API_KEY = "duck-image-key";
+    process.env.DUCKCODING_BASE_URL = "https://duck.test/v1";
+    process.env.DUCKCODING_TEXT_MODEL = "duck-text-test";
+    process.env.DUCKCODING_IMAGE_MODEL = "duck-image-test";
+    process.env.DUCKCODING_IMAGE_SIZE = "1024x1536";
     process.env.HTTP_PROXY = "http://proxy";
     process.env.HTTPS_PROXY = "https://proxy";
     process.env.ALL_PROXY = "socks://proxy";
@@ -36,9 +42,12 @@ describe("loadConfig", () => {
     expect(loadConfig()).toEqual({
       port: 8788,
       logLevel: "debug",
-      openaiApiKey: "sk-test",
-      openaiTextModel: "gpt-test",
-      openaiImageModel: "gpt-image-test",
+      duckcodingTextApiKey: "duck-text-key",
+      duckcodingImageApiKey: "duck-image-key",
+      duckcodingBaseUrl: "https://duck.test/v1",
+      duckcodingTextModel: "duck-text-test",
+      duckcodingImageModel: "duck-image-test",
+      duckcodingImageSize: "1024x1536",
       proxy: {
         httpProxy: "http://proxy",
         httpsProxy: "https://proxy",
@@ -54,9 +63,15 @@ describe("loadConfig", () => {
     const previousEnv = { ...process.env };
     process.env.PORT = "8788";
     process.env.LOG_LEVEL = "info";
-    process.env.OPENAI_API_KEY = "";
-    process.env.OPENAI_TEXT_MODEL = " ";
-    process.env.OPENAI_IMAGE_MODEL = "";
+    delete process.env.OPENAI_API_KEY;
+    delete process.env.OPENAI_TEXT_MODEL;
+    delete process.env.NEW_API_KEY;
+    process.env.DUCKCODING_TEXT_API_KEY = "";
+    process.env.DUCKCODING_IMAGE_API_KEY = "";
+    process.env.DUCKCODING_BASE_URL = " ";
+    process.env.DUCKCODING_TEXT_MODEL = "";
+    process.env.DUCKCODING_IMAGE_MODEL = "";
+    process.env.DUCKCODING_IMAGE_SIZE = " ";
     process.env.HTTP_PROXY = "";
     process.env.HTTPS_PROXY = " ";
     process.env.ALL_PROXY = "";
@@ -65,9 +80,12 @@ describe("loadConfig", () => {
     expect(loadConfig()).toEqual({
       port: 8788,
       logLevel: "info",
-      openaiApiKey: undefined,
-      openaiTextModel: undefined,
-      openaiImageModel: undefined,
+      duckcodingTextApiKey: undefined,
+      duckcodingImageApiKey: undefined,
+      duckcodingBaseUrl: undefined,
+      duckcodingTextModel: undefined,
+      duckcodingImageModel: undefined,
+      duckcodingImageSize: undefined,
       proxy: {
         httpProxy: undefined,
         httpsProxy: undefined,

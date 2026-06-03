@@ -10,12 +10,18 @@ describe("jsonLogger", () => {
       redactValue({
         apiKey: "secret",
         OPENAI_API_KEY: "sk-test",
+        NEW_API_KEY: "duck-test",
+        DUCKCODING_TEXT_API_KEY: "duck-text-key",
+        DUCKCODING_IMAGE_API_KEY: "duck-image-key",
         api_key: "snake-secret",
         nested: { token: "abc" },
       }),
     ).toEqual({
       apiKey: "[redacted]",
       OPENAI_API_KEY: "[redacted]",
+      NEW_API_KEY: "[redacted]",
+      DUCKCODING_TEXT_API_KEY: "[redacted]",
+      DUCKCODING_IMAGE_API_KEY: "[redacted]",
       api_key: "[redacted]",
       nested: { token: "[redacted]" },
     });
@@ -73,6 +79,19 @@ describe("jsonLogger", () => {
 
     expect(sink).toHaveBeenCalledTimes(1);
     expect(JSON.parse(sink.mock.calls[0][0]).event).toBe("api.request.started");
+  });
+
+  it("writes debug logs when configured for debug level", () => {
+    const sink = vi.fn();
+    const logger = createJsonLogger({ sink, level: "debug" });
+
+    logger.debug("api.request.debug", { requestBody: { routeName: "成都" } });
+
+    expect(sink).toHaveBeenCalledTimes(1);
+    const parsed = JSON.parse(sink.mock.calls[0][0]);
+    expect(parsed.level).toBe("debug");
+    expect(parsed.event).toBe("api.request.debug");
+    expect(parsed.requestBody).toEqual({ routeName: "成都" });
   });
 
   it("does not allow fields to override core log metadata", () => {

@@ -4,9 +4,12 @@ import { createProductionApp } from "../../src/server/productionApp";
 const config = {
   port: 8788,
   logLevel: "error" as const,
-  openaiApiKey: "sk-test",
-  openaiTextModel: "gpt-test",
-  openaiImageModel: "gpt-image-1",
+  duckcodingTextApiKey: "duck-text-key",
+  duckcodingImageApiKey: "duck-image-key",
+  duckcodingBaseUrl: "https://www.duckcoding.ai/v1",
+  duckcodingTextModel: "gpt-5.5",
+  duckcodingImageModel: "gpt-image-1",
+  duckcodingImageSize: "1024x1536",
   proxy: {},
   xiaohongshuPublishUrl: "https://creator.xiaohongshu.com/publish/publish",
 };

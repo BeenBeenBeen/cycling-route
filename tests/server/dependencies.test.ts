@@ -1,13 +1,17 @@
 import { describe, expect, it } from "vitest";
+import { vi } from "vitest";
 import type { AppConfig } from "../../src/server/config";
 import { createProductionDependencies } from "../../src/server/dependencies";
 
 const config: AppConfig = {
   port: 8787,
   logLevel: "error",
-  openaiApiKey: "sk-test",
-  openaiTextModel: "gpt-test",
-  openaiImageModel: "gpt-image-1",
+  duckcodingTextApiKey: "duck-text-key",
+  duckcodingImageApiKey: "duck-image-key",
+  duckcodingBaseUrl: "https://duck.test/v1",
+  duckcodingTextModel: "duck-text-test",
+  duckcodingImageModel: "duck-image-test",
+  duckcodingImageSize: "1024x1536",
   proxy: {},
   xiaohongshuPublishUrl: "https://example.test/publish",
 };
@@ -26,6 +30,31 @@ const route = {
 };
 
 describe("createProductionDependencies", () => {
+  it("logs the effective server configuration", () => {
+    const logger = {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    };
+
+    createProductionDependencies(config, { logger } as any);
+
+    expect(logger.info).toHaveBeenCalledWith(
+      "server.config.loaded",
+      expect.objectContaining({
+        port: 8787,
+        logLevel: "error",
+        hasDuckcodingTextApiKey: true,
+        hasDuckcodingImageApiKey: true,
+        duckcodingBaseUrl: "https://duck.test/v1",
+        duckcodingTextModel: "duck-text-test",
+        duckcodingImageModel: "duck-image-test",
+        duckcodingImageSize: "1024x1536",
+      }),
+    );
+  });
+
   it("returns all API dependencies when configuration is complete", () => {
     const dependencies = createProductionDependencies(config);
 
@@ -39,13 +68,12 @@ describe("createProductionDependencies", () => {
   it("does not crash on missing OpenAI configuration until the API is called", async () => {
     const dependencies = createProductionDependencies({
       ...config,
-      openaiApiKey: undefined,
-      openaiTextModel: undefined,
-      openaiImageModel: undefined,
+      duckcodingTextApiKey: undefined,
+      duckcodingImageApiKey: undefined,
     });
 
     await expect(dependencies.generatePost?.(route)).rejects.toThrow(
-      "OPENAI_API_KEY is required",
+      "DUCKCODING_TEXT_API_KEY is required",
     );
     await expect(
       dependencies.generateCover?.({
@@ -54,6 +82,6 @@ describe("createProductionDependencies", () => {
         coverTitle: "成都到青城山",
         coverSubtitle: "82km / 620m",
       }),
-    ).rejects.toThrow("OPENAI_API_KEY is required");
+    ).rejects.toThrow("DUCKCODING_IMAGE_API_KEY is required");
   });
 });

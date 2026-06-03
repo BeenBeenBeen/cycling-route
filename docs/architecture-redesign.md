@@ -18,7 +18,7 @@
 - 领域模型使用 Zod 统一校验，包括路线输入、生成文案、封面请求和发布请求。
 - AI 调用、图片合成、文件保存、浏览器自动化都放在服务层，通过用例层调用。
 - 关键路线事实由用户输入和本地渲染控制，不交给图片模型生成。
-- OpenAI、文件系统、Sharp、Playwright 都隔离在基础设施服务中，便于测试和替换。
+- DuckCoding OpenAI-compatible API、文件系统、Sharp、Playwright 都隔离在基础设施服务中，便于测试和替换。
 - 发布辅助永远不点击最终发布按钮。
 
 ## 3. 分层设计
@@ -46,8 +46,8 @@ Application Use Cases
         |
         v
 Infrastructure Services
-  OpenAI Responses API
-  OpenAI Images API
+  DuckCoding Chat Completions API (OpenAI-compatible)
+  DuckCoding Images API (OpenAI-compatible)
   Sharp cover composer
   File system markdown store
   Playwright Xiaohongshu assistant
@@ -110,14 +110,14 @@ flowchart TD
   B --> C[POST /api/generate-post]
   C --> D[RouteInput Zod 校验]
   D --> E[buildPostPrompt 构造提示词]
-  E --> F[OpenAI Responses API]
+  E --> F[DuckCoding Chat Completions API]
   F --> G[GeneratedPost Zod 校验]
   G --> H[返回 post 给前端]
   H --> I[用户编辑标题 正文 标签 封面文案]
   I --> J[POST /api/generate-cover]
-  J --> K[OpenAI Images API 生成背景]
+  J --> K[DuckCoding Images API 生成背景]
   K --> L[Sharp 本地叠加路线事实]
-  L --> M[返回 coverPath]
+  L --> M[返回 coverPath 和 coverUrl]
   I --> N[POST /api/save-markdown]
   M --> N
   N --> O[保存 data/posts/*.md]
@@ -128,19 +128,76 @@ flowchart TD
   R --> S[用户人工检查并发布]
 ```
 
+### 5.1 文案生成接口
+
+`/api/generate-post` 使用 DuckCoding 提供的 OpenAI-compatible Chat Completions API。服务层仍使用 OpenAI Node SDK，但必须配置 DuckCoding 的 `baseURL`，并使用 `DUCKCODING_TEXT_API_KEY` 作为文案生成密钥。
+
+```ts
+import OpenAI from "openai";
+
+const client = new OpenAI({
+  baseURL: process.env.DUCKCODING_BASE_URL ?? "https://www.duckcoding.ai/v1",
+  apiKey: process.env.DUCKCODING_TEXT_API_KEY,
+});
+
+const completion = await client.chat.completions.create({
+  model: process.env.DUCKCODING_TEXT_MODEL ?? "gpt-5.5",
+  messages: [{ role: "user", content: buildPostPrompt(route) }],
+});
+
+const content = completion.choices[0]?.message?.content;
+```
+
+调用约束：
+
+- `messages[0].content` 使用 `buildPostPrompt(route)` 构造，要求模型输出纯 JSON，不输出 Markdown 或解释文字。
+- `content` 必须先解析为 JSON，再用 `GeneratedPost` Zod schema 校验。
+- 如果 `content` 为空、不是合法 JSON、或不符合 schema，接口返回 `502` 上游生成失败。
+- 默认文案模型为 `gpt-5.5`，可通过 `DUCKCODING_TEXT_MODEL` 覆盖。
+- 文案生成不得使用图片生成 key；`DUCKCODING_TEXT_API_KEY` 缺失时，`/api/generate-post` 返回上游配置错误。
+
 ## 6. 封面生成数据流图
 
 ```mermaid
 flowchart LR
   A[route + imagePrompt + coverTitle + coverSubtitle] --> B[校验封面请求]
-  B --> C[OpenAI Images API]
+  B --> C[DuckCoding Images API]
   C --> D[data/images/background.png]
   D --> E[Sharp Composer]
   B --> E
   E --> F[叠加路线名 里程 爬升 难度 起终点]
   F --> G[data/images/cover.png]
-  G --> H[返回 coverPath]
+  G --> H[返回 coverPath 和 coverUrl]
 ```
+
+### 6.1 图片生成接口
+
+封面背景生成使用 DuckCoding 提供的 OpenAI-compatible Images API。服务层仍使用 OpenAI Node SDK，但图片客户端必须配置 DuckCoding 的 `baseURL`，并使用 `DUCKCODING_IMAGE_API_KEY` 作为图片生成密钥。
+
+```ts
+import OpenAI from "openai";
+
+const client = new OpenAI({
+  baseURL: process.env.DUCKCODING_BASE_URL ?? "https://www.duckcoding.ai/v1",
+  apiKey: process.env.DUCKCODING_IMAGE_API_KEY,
+});
+
+const response = await client.images.generate({
+  model: process.env.DUCKCODING_IMAGE_MODEL ?? "gpt-image-1",
+  prompt,
+  size: process.env.DUCKCODING_IMAGE_SIZE ?? "1024x1536",
+  n: 1,
+});
+```
+
+调用约束：
+
+- `prompt` 来自 `GeneratedPost.imagePrompt`，并追加“无最终中文文字、无可读标签、无数字、水印或 UI 文本”等约束。
+- 图片接口只负责生成背景图，路线名、里程、爬升、难度、起终点等关键事实必须由本地 Sharp 合成。
+- 默认模型为 `gpt-image-1`，默认背景生成尺寸为 `1024x1536`，默认生成数量为 `1`。
+- 本地 Sharp 最终合成海报固定输出为小红书常用竖图尺寸 `1080x1440`，比例为 `3:4`。
+- 如果响应包含 `b64_json`，服务层直接写入 `data/images/background-*.png`；如果响应包含图片 URL，服务层下载后再写入本地文件。
+- 图片生成不得使用文案生成 key；`DUCKCODING_IMAGE_API_KEY` 缺失时，`/api/generate-cover` 返回上游配置错误。
 
 ## 7. 核心领域模型
 
@@ -191,7 +248,7 @@ flowchart LR
 
 - 让用户快速录入完整路线事实。
 - 让 AI 生成结果可预览、可编辑、可保存。
-- 明确展示当前流程状态，避免重复点击导致重复消耗 OpenAI 额度。
+- 明确展示当前流程状态，避免重复点击导致重复消耗上游 AI 额度。
 - 让封面生成和发布辅助成为显式动作。
 - 所有错误都在当前页面可见，并保留后端终端日志作为排查依据。
 
@@ -229,7 +286,7 @@ GeneratedPostEditor
 |---|---|---|
 | `App.vue` | 维护页面状态、串联工作流、处理错误和加载状态 | 具体字段渲染、业务校验细节 |
 | `RouteForm.vue` | 录入路线信息，将 textarea 转为字符串数组 | 调用 API、生成提示词 |
-| `GeneratedPostEditor.vue` | 展示并编辑 AI 生成结果、选择标题 | 调用 OpenAI、保存文件 |
+| `GeneratedPostEditor.vue` | 展示并编辑 AI 生成结果、选择标题 | 调用上游 AI、保存文件 |
 | `CoverPreview.vue` | 展示封面图、封面加载状态、封面错误 | 生成封面 |
 | `WorkflowActions.vue` | 展示操作按钮和禁用状态 | 保存业务状态 |
 | `publishingApi.ts` | 封装前端 API 请求、统一解析错误 | 页面渲染 |
@@ -368,7 +425,7 @@ error 不存在：显示“请求失败”
 |---|---|---|---|---|
 | `/api/health` | GET | 健康检查 | `{ ok: true }` | 无 |
 | `/api/generate-post` | POST | 根据路线生成小红书文案和封面提示词 | `{ post }` | `400` 输入错误，`502` AI 错误 |
-| `/api/generate-cover` | POST | 生成封面背景并本地合成海报 | `{ coverPath }` | `400` 输入错误，`502` 图片生成失败，`500` 合成失败 |
+| `/api/generate-cover` | POST | 使用 DuckCoding Images API 生成封面背景并本地合成海报 | `{ coverPath, coverUrl }` | `400` 输入错误，`502` 图片生成失败，`500` 合成失败 |
 | `/api/save-markdown` | POST | 保存最终内容为 Markdown | `{ markdownPath }` | `400` 输入错误，`500` 写入失败 |
 | `/api/assist-publish` | POST | 启动小红书发布辅助 | `{ ok: true }` | `400` 输入错误，`500` 浏览器自动化失败 |
 
@@ -431,12 +488,14 @@ error 不存在：显示“请求失败”
 | 字段 | 类型 | 说明 |
 |---|---:|---|
 | `coverPath` | string | 生成后的本地封面 PNG 路径 |
+| `coverUrl` | string | 前端可直接加载的封面访问路径 |
 
 示例：
 
 ```json
 {
-  "coverPath": "data/images/2026-06-01-cover.png"
+  "coverPath": "data/images/2026-06-01-cover.png",
+  "coverUrl": "/generated-images/2026-06-01-cover.png"
 }
 ```
 
@@ -511,7 +570,7 @@ type ApiError = {
 | 状态码 | 场景 |
 |---:|---|
 | `400` | 本地输入校验失败 |
-| `502` | OpenAI 等上游服务失败 |
+| `502` | DuckCoding 等上游服务失败 |
 | `500` | 文件系统、图片合成、Playwright 等本地执行失败 |
 
 示例：
@@ -535,7 +594,7 @@ type ApiError = {
 
 - 校验路线输入。
 - 构造小红书文案提示词。
-- 调用 OpenAI Responses API。
+- 调用 DuckCoding Chat Completions API。
 - 校验 AI 返回的 JSON 结构。
 
 不负责：
@@ -548,13 +607,13 @@ type ApiError = {
 
 输入：`route`、`imagePrompt`、`coverTitle`、`coverSubtitle`
 
-输出：`coverPath`
+输出：`coverPath`、`coverUrl`
 
 职责：
 
-- 生成无最终中文文字的封面背景。
+- 调用 DuckCoding Images API 生成无最终中文文字的封面背景。
 - 使用本地程序叠加路线事实。
-- 输出 PNG 文件路径。
+- 输出 PNG 文件路径和前端可访问路径。
 
 不负责：
 
@@ -600,13 +659,13 @@ type ApiError = {
 | domain | Zod schema、提示词是否保留路线事实、AI 输出 schema |
 | useCases | 用例编排、错误分支、依赖替换 |
 | routes | HTTP 状态码、请求校验、响应格式 |
-| services | OpenAI 请求包装、Sharp 输出、Markdown 文件、Playwright 行为边界 |
+| services | DuckCoding OpenAI-compatible 请求包装、Sharp 输出、Markdown 文件、Playwright 行为边界 |
 | client | 表单转换、按钮状态、错误展示、生成结果编辑 |
 
 测试原则：
 
 - 领域逻辑和 API 行为先写测试。
-- OpenAI 不在单元测试中真实调用。
+- DuckCoding 等上游 AI 服务不在单元测试中真实调用。
 - Playwright 发布辅助使用假的 browser/page 抽象测试。
 - 图片合成服务可以使用小尺寸测试图验证输出文件存在和格式正确。
 
@@ -652,16 +711,16 @@ type ApiError = {
 | `requestBody` | object | 否 | 请求体，经过脱敏和长度限制 |
 | `responseBody` | object | 否 | 响应体摘要，错误时必须记录 |
 
-### 13.4 OpenAI 调用日志字段
+### 13.4 AI 调用日志字段
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---:|---:|---|
-| `provider` | string | 是 | 固定为 `openai` |
-| `operation` | string | 是 | `responses.create` 或 `images.generate` |
+| `provider` | string | 是 | `duckcoding` |
+| `operation` | string | 是 | `chat.completions.create` 或 `images.generate` |
 | `model` | string | 是 | 使用的模型名 |
-| `status` | number | 否 | OpenAI HTTP 状态码 |
-| `requestHeaders` | object | 否 | 发送给 OpenAI 的请求头，经过脱敏 |
-| `requestBody` | object | 否 | 发送给 OpenAI 的请求体，经过脱敏和长度限制 |
+| `status` | number | 否 | 上游 HTTP 状态码 |
+| `requestHeaders` | object | 否 | 发送给上游接口的请求头，经过脱敏 |
+| `requestBody` | object | 否 | 发送给上游接口的请求体，经过脱敏和长度限制 |
 | `responseSummary` | object | 否 | 响应摘要，不记录完整大文本或 base64 图片 |
 
 ### 13.5 事件名约定
@@ -671,9 +730,9 @@ type ApiError = {
 | `api.request.started` | `info` | 收到前端 API 请求 |
 | `api.request.completed` | `info` | API 请求成功或业务错误返回 |
 | `api.request.failed` | `error` | API 请求出现未处理异常 |
-| `openai.request.started` | `info` | 准备调用 OpenAI |
-| `openai.request.completed` | `info` | OpenAI 调用成功 |
-| `openai.request.failed` | `error` | OpenAI 调用失败 |
+| `openai.request.started` | `info` | 准备调用 DuckCoding OpenAI-compatible 上游 |
+| `openai.request.completed` | `info` | DuckCoding OpenAI-compatible 上游调用成功 |
+| `openai.request.failed` | `error` | DuckCoding OpenAI-compatible 上游调用失败 |
 | `cover.compose.started` | `info` | 开始本地合成封面 |
 | `cover.compose.completed` | `info` | 本地封面合成成功 |
 | `cover.compose.failed` | `error` | 本地封面合成失败 |
@@ -686,7 +745,8 @@ type ApiError = {
 
 必须脱敏：
 
-- `OPENAI_API_KEY`
+- `DUCKCODING_TEXT_API_KEY`
+- `DUCKCODING_IMAGE_API_KEY`
 - HTTP headers 中的 `authorization`
 - cookie
 - 小红书账号、手机号、验证码
@@ -698,8 +758,8 @@ type ApiError = {
 |---|---:|---|
 | 请求头 | 4 KB | 脱敏后记录，超出后截断 |
 | API 请求体 | 8 KB | 超出后截断并添加 `truncated: true` |
-| OpenAI prompt | 8 KB | 超出后截断并添加 `truncated: true` |
-| OpenAI 文本响应 | 4 KB | 只记录摘要 |
+| AI prompt | 8 KB | 超出后截断并添加 `truncated: true` |
+| AI 文本响应 | 4 KB | 只记录摘要 |
 | 图片 base64 | 0 | 禁止记录 |
 
 请求头脱敏规则：
@@ -719,8 +779,8 @@ type ApiError = {
 请求体记录规则：
 
 - API 请求体默认记录完整 JSON，但必须应用 8 KB 限制。
-- OpenAI 请求体可以记录 `model`、`input`、`prompt`、`size`、`text.format` 等调试必要字段。
-- OpenAI 图片响应中的 `b64_json` 禁止记录。
+- DuckCoding 请求体可以记录 `model`、`messages`、`prompt`、`size`、`n` 等调试必要字段。
+- DuckCoding 图片响应中的 `b64_json` 禁止记录。
 - 文件上传、Buffer、ArrayBuffer、Blob、FormData 只记录类型、字段名和大小，不记录二进制内容。
 - 任何包含 `apiKey`、`password`、`token`、`secret`、`code` 的字段名必须脱敏。
 
@@ -732,10 +792,16 @@ API 请求开始：
 {"time":"2026-06-01T12:00:00.000Z","level":"info","event":"api.request.started","requestId":"req_01","method":"POST","path":"/api/generate-post","requestHeaders":{"content-type":"application/json","user-agent":"Mozilla/5.0"},"requestBody":{"routeName":"成都到青城山周末骑行","distanceKm":82}}
 ```
 
-OpenAI 调用失败：
+DuckCoding 文案生成调用失败：
 
 ```json
-{"time":"2026-06-01T12:00:01.000Z","level":"error","event":"openai.request.failed","requestId":"req_01","provider":"openai","operation":"responses.create","model":"gpt-5.4-mini","requestHeaders":{"authorization":"[redacted]","content-type":"application/json"},"requestBody":{"model":"gpt-5.4-mini","input":"你是成都周边骑行路线的小红书内容策划...","text":{"format":{"type":"json_object"}}},"durationMs":913,"error":{"name":"Error","message":"Billing hard limit has been reached"}}
+{"time":"2026-06-01T12:00:01.000Z","level":"error","event":"openai.request.failed","requestId":"req_01","provider":"duckcoding","operation":"chat.completions.create","model":"gpt-5.5","requestHeaders":{"authorization":"[redacted]","content-type":"application/json"},"requestBody":{"model":"gpt-5.5","messages":[{"role":"user","content":"你是成都周边骑行路线的小红书内容策划..."}]},"durationMs":913,"error":{"name":"Error","message":"Billing hard limit has been reached"}}
+```
+
+DuckCoding 图片生成请求：
+
+```json
+{"time":"2026-06-01T12:00:02.000Z","level":"info","event":"openai.request.started","requestId":"req_02","provider":"duckcoding","operation":"images.generate","model":"gpt-image-1","requestHeaders":{"authorization":"[redacted]","content-type":"application/json"},"requestBody":{"model":"gpt-image-1","prompt":"Strava-like cycling poster background, no final Chinese text...","size":"1024x1536","n":1}}
 ```
 
 API 错误返回：
@@ -749,9 +815,12 @@ API 错误返回：
 | 变量 | 必填 | 说明 |
 |---|---:|---|
 | `PORT` | 否 | 后端端口，默认 `8787` |
-| `OPENAI_API_KEY` | 是 | OpenAI API key |
-| `OPENAI_TEXT_MODEL` | 是 | 文案生成模型 |
-| `OPENAI_IMAGE_MODEL` | 是 | 图片生成模型 |
+| `DUCKCODING_BASE_URL` | 否 | DuckCoding API 地址，默认 `https://www.duckcoding.ai/v1` |
+| `DUCKCODING_TEXT_API_KEY` | 是 | DuckCoding Chat Completions API key，用于 `/api/generate-post` |
+| `DUCKCODING_TEXT_MODEL` | 否 | 文案生成模型，默认 `gpt-5.5` |
+| `DUCKCODING_IMAGE_API_KEY` | 是 | DuckCoding Images API key，用于 `/api/generate-cover` |
+| `DUCKCODING_IMAGE_MODEL` | 否 | 图片生成模型，默认 `gpt-image-1` |
+| `DUCKCODING_IMAGE_SIZE` | 否 | 背景图生成尺寸，默认 `1024x1536`；最终海报输出固定为 `1080x1440` |
 | `HTTP_PROXY` | 否 | HTTP 代理 |
 | `HTTPS_PROXY` | 否 | HTTPS 代理 |
 | `ALL_PROXY` | 否 | 通用代理 |
@@ -759,7 +828,7 @@ API 错误返回：
 
 ## 15. 关键风险
 
-- OpenAI 额度或 hard limit 触发会导致文案和封面生成失败。
+- DuckCoding 额度、hard limit 或模型权限限制会导致文案或封面生成失败。
 - 图片生成成本较高，必须由用户显式点击触发。
 - 小红书页面结构变化可能导致 Playwright 选择器失效。
 - 用户输入不完整会影响 AI 生成质量，因此必填字段必须严格校验。

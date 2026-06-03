@@ -8,6 +8,7 @@ export default defineConfig(({ mode }) => ({
   server: {
     proxy: {
       "/api": resolveApiProxyTarget(loadEnv(mode, process.cwd(), "")),
+      "/media": resolveApiProxyTarget(loadEnv(mode, process.cwd(), "")),
     },
   },
 }));

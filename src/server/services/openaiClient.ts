@@ -10,6 +10,11 @@ export type OpenAIProxyConfig = {
 
 type Fetch = typeof globalThis.fetch;
 
+type OpenAIClientOptions = {
+  baseURL?: string;
+  provider?: string;
+};
+
 const normalizeProxy = (value?: string) => {
   if (!value) {
     return undefined;
@@ -70,6 +75,20 @@ const requestInfo = (input: RequestInfo | URL, init?: RequestInit) => {
   return { method, url: url.split("?")[0] };
 };
 
+const operationForUrl = (url: string) => {
+  const pathname = new URL(url).pathname;
+
+  if (pathname.endsWith("/chat/completions")) {
+    return "chat.completions.create";
+  }
+
+  if (pathname.endsWith("/images/generations")) {
+    return "images.generate";
+  }
+
+  return undefined;
+};
+
 const errorForLog = (error: unknown) => {
   if (error instanceof Error) {
     return { name: error.name, message: error.message };
@@ -79,13 +98,15 @@ const errorForLog = (error: unknown) => {
 };
 
 export const createLoggedFetch =
-  (baseFetch: Fetch, logger: JsonLogger): Fetch =>
+  (baseFetch: Fetch, logger: JsonLogger, provider = "openai"): Fetch =>
   async (input, init) => {
     const startedAt = Date.now();
     const { method, url } = requestInfo(input, init);
+    const operation = operationForUrl(url);
 
     logger.debug("openai.request.debug", {
-      provider: "openai",
+      provider,
+      operation,
       method,
       url,
       requestHeaders: headersToObject(init?.headers),
@@ -93,7 +114,8 @@ export const createLoggedFetch =
     });
 
     logger.info("openai.request.started", {
-      provider: "openai",
+      provider,
+      operation,
       method,
       url,
     });
@@ -101,7 +123,8 @@ export const createLoggedFetch =
     try {
       const response = await baseFetch(input, init);
       logger.info("openai.request.completed", {
-        provider: "openai",
+        provider,
+        operation,
         method,
         url,
         status: response.status,
@@ -110,7 +133,8 @@ export const createLoggedFetch =
       return response;
     } catch (error) {
       logger.error("openai.request.failed", {
-        provider: "openai",
+        provider,
+        operation,
         method,
         url,
         durationMs: Date.now() - startedAt,
@@ -124,18 +148,24 @@ export const createOpenAIClient = (
   apiKey: string,
   proxyConfig: OpenAIProxyConfig,
   logger: JsonLogger,
+  options: OpenAIClientOptions = {},
 ) => {
   const proxyUrl = resolveProxyUrl(proxyConfig);
-  const loggedFetch = createLoggedFetch(fetch as unknown as Fetch, logger);
+  const loggedFetch = createLoggedFetch(
+    fetch as unknown as Fetch,
+    logger,
+    options.provider,
+  );
 
   if (!proxyUrl) {
-    return new OpenAI({ apiKey, fetch: loggedFetch });
+    return new OpenAI({ apiKey, baseURL: options.baseURL, fetch: loggedFetch });
   }
 
   const proxyAgent = new ProxyAgent(proxyUrl);
 
   return new OpenAI({
     apiKey,
+    baseURL: options.baseURL,
     fetch: loggedFetch,
     fetchOptions: {
       dispatcher: proxyAgent,

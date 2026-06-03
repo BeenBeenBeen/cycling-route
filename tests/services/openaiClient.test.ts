@@ -27,24 +27,49 @@ describe("createLoggedFetch", () => {
       .mockResolvedValue(new Response("{}", { status: 200, statusText: "OK" }));
     const logged = createLoggedFetch(fetch, logger as any);
 
-    await logged("https://api.openai.com/v1/responses", {
+    await logged("https://www.duckcoding.ai/v1/images/generations", {
       method: "POST",
       headers: { authorization: "Bearer secret", "content-type": "application/json" },
-      body: JSON.stringify({ model: "gpt-test", input: "hello" }),
+      body: JSON.stringify({ model: "gpt-image-1", prompt: "hello" }),
     });
 
     expect(logger.debug).toHaveBeenCalledWith(
       "openai.request.debug",
       expect.objectContaining({
+        provider: "openai",
+        operation: "images.generate",
         requestHeaders: expect.any(Object),
-        requestBody: { model: "gpt-test", input: "hello" },
+        requestBody: { model: "gpt-image-1", prompt: "hello" },
       }),
     );
     expect(logger.info).toHaveBeenCalledWith(
       "openai.request.completed",
       expect.objectContaining({
+        provider: "openai",
+        operation: "images.generate",
         status: 200,
         durationMs: expect.any(Number),
+      }),
+    );
+  });
+
+  it("logs DuckCoding chat completion operations", async () => {
+    const logger = { debug: vi.fn(), info: vi.fn(), error: vi.fn() };
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValue(new Response("{}", { status: 200, statusText: "OK" }));
+    const logged = createLoggedFetch(fetch, logger as any, "duckcoding");
+
+    await logged("https://www.duckcoding.ai/v1/chat/completions", {
+      method: "POST",
+      body: JSON.stringify({ model: "gpt-5.5", messages: [] }),
+    });
+
+    expect(logger.debug).toHaveBeenCalledWith(
+      "openai.request.debug",
+      expect.objectContaining({
+        provider: "duckcoding",
+        operation: "chat.completions.create",
       }),
     );
   });
@@ -56,12 +81,13 @@ describe("createLoggedFetch", () => {
     const logged = createLoggedFetch(fetch, logger as any);
 
     await expect(
-      logged("https://api.openai.com/v1/responses", { method: "POST" }),
+      logged("https://www.duckcoding.ai/v1/chat/completions", { method: "POST" }),
     ).rejects.toThrow("network failed");
 
     expect(logger.error).toHaveBeenCalledWith(
       "openai.request.failed",
       expect.objectContaining({
+        operation: "chat.completions.create",
         error: { name: "Error", message: "network failed" },
         durationMs: expect.any(Number),
       }),

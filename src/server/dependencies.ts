@@ -1,6 +1,6 @@
 import type { AppDependencies } from "./app";
 import type { AppConfig } from "./config";
-import { createJsonLogger } from "./logging/jsonLogger";
+import { createJsonLogger, type JsonLogger } from "./logging/jsonLogger";
 import { createOpenaiCoverBackgroundGenerator } from "./services/openaiCoverBackgroundGenerator";
 import { createOpenaiPostGenerator } from "./services/openaiPostGenerator";
 import { composeCoverPoster } from "./services/coverPosterComposer";
@@ -13,16 +13,31 @@ import { createSaveMarkdownUseCase } from "./useCases/saveMarkdownUseCase";
 
 export const createProductionDependencies = (
   config: AppConfig,
+  options: { logger?: JsonLogger } = {},
 ): Required<Pick<AppDependencies, "logger">> & AppDependencies => {
-  const logger = createJsonLogger({ level: config.logLevel });
+  const logger = options.logger ?? createJsonLogger({ level: config.logLevel });
+  logger.info("server.config.loaded", {
+    port: config.port,
+    logLevel: config.logLevel,
+    hasDuckcodingTextApiKey: Boolean(config.duckcodingTextApiKey),
+    hasDuckcodingImageApiKey: Boolean(config.duckcodingImageApiKey),
+    duckcodingBaseUrl: config.duckcodingBaseUrl,
+    duckcodingTextModel: config.duckcodingTextModel,
+    duckcodingImageModel: config.duckcodingImageModel,
+    duckcodingImageSize: config.duckcodingImageSize,
+    hasHttpProxy: Boolean(config.proxy.httpProxy),
+    hasHttpsProxy: Boolean(config.proxy.httpsProxy),
+    hasAllProxy: Boolean(config.proxy.allProxy),
+  });
 
   return {
     logger,
     generatePost: async (input) =>
       await createGeneratePostUseCase({
         generatePost: createOpenaiPostGenerator({
-          apiKey: config.openaiApiKey,
-          model: config.openaiTextModel,
+          apiKey: config.duckcodingTextApiKey,
+          baseUrl: config.duckcodingBaseUrl,
+          model: config.duckcodingTextModel,
           proxy: config.proxy,
           logger,
         }),
@@ -30,8 +45,10 @@ export const createProductionDependencies = (
     generateCover: async (input) =>
       await createGenerateCoverUseCase({
         generateBackground: createOpenaiCoverBackgroundGenerator({
-          apiKey: config.openaiApiKey,
-          model: config.openaiImageModel,
+          apiKey: config.duckcodingImageApiKey,
+          baseUrl: config.duckcodingBaseUrl,
+          model: config.duckcodingImageModel,
+          size: config.duckcodingImageSize,
           proxy: config.proxy,
           logger,
         }),
