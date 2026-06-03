@@ -84,12 +84,18 @@ export const createLoggedFetch =
     const startedAt = Date.now();
     const { method, url } = requestInfo(input, init);
 
-    logger.info("openai.request.started", {
+    logger.debug("openai.request.debug", {
       provider: "openai",
       method,
       url,
       requestHeaders: headersToObject(init?.headers),
       requestBody: parseBodyForLog(init?.body),
+    });
+
+    logger.info("openai.request.started", {
+      provider: "openai",
+      method,
+      url,
     });
 
     try {

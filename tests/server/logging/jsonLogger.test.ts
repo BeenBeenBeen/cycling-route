@@ -64,6 +64,17 @@ describe("jsonLogger", () => {
     expect(parsed.requestHeaders.authorization).toBe("[redacted]");
   });
 
+  it("filters log entries below the configured level", () => {
+    const sink = vi.fn();
+    const logger = createJsonLogger({ sink, level: "info" });
+
+    logger.debug("api.request.debug", { requestBody: { routeName: "成都" } });
+    logger.info("api.request.started");
+
+    expect(sink).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(sink.mock.calls[0][0]).event).toBe("api.request.started");
+  });
+
   it("does not allow fields to override core log metadata", () => {
     const sink = vi.fn();
     const logger = createJsonLogger({ sink });

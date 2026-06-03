@@ -1,11 +1,12 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { JsonLogger } from "../logging/jsonLogger";
-import { createOpenAIClient } from "./openaiClient";
+import { createOpenAIClient, type OpenAIProxyConfig } from "./openaiClient";
 
 export type OpenaiCoverBackgroundGeneratorConfig = {
   apiKey?: string;
   model?: string;
+  proxy?: OpenAIProxyConfig;
   outputDir?: string;
   logger: JsonLogger;
 };
@@ -17,9 +18,23 @@ const slugify = (value: string) =>
     .replace(/^-+|-+$/g, "")
     .toLowerCase();
 
+const imageRequestOptionsForModel = (model: string) => {
+  if (model.startsWith("gpt-image")) {
+    return {
+      size: "1024x1536",
+    } as const;
+  }
+
+  return {
+    size: "1024x1792",
+    response_format: "b64_json",
+  } as const;
+};
+
 export const createOpenaiCoverBackgroundGenerator = ({
   apiKey,
   model,
+  proxy = {},
   outputDir = path.join(process.cwd(), "data", "images"),
   logger,
 }: OpenaiCoverBackgroundGeneratorConfig) => {
@@ -31,15 +46,7 @@ export const createOpenaiCoverBackgroundGenerator = ({
     throw new Error("OPENAI_IMAGE_MODEL is required");
   }
 
-  const client = createOpenAIClient(
-    apiKey,
-    {
-      httpProxy: process.env.HTTP_PROXY ?? process.env.http_proxy,
-      httpsProxy: process.env.HTTPS_PROXY ?? process.env.https_proxy,
-      allProxy: process.env.ALL_PROXY ?? process.env.all_proxy,
-    },
-    logger,
-  );
+  const client = createOpenAIClient(apiKey, proxy, logger);
 
   return async (imagePrompt: string): Promise<string> => {
     await mkdir(outputDir, { recursive: true });
@@ -54,8 +61,8 @@ export const createOpenaiCoverBackgroundGenerator = ({
         "Do not generate final Chinese text, readable labels, numbers, logos, watermarks, or UI text.",
         "The local application will add all route facts and typography later.",
       ].join("\n"),
-      size: "1024x1536",
-    });
+      ...imageRequestOptionsForModel(model),
+    } as any);
 
     const image = response.data?.[0];
     if (!image?.b64_json) {

@@ -1,4 +1,4 @@
-type LogLevel = "debug" | "info" | "warn" | "error";
+export type LogLevel = "debug" | "info" | "warn" | "error";
 type Sink = (line: string) => void;
 
 const sensitivePattern =
@@ -9,7 +9,32 @@ type RedactOptions = {
   maxSerializedBytes?: number;
 };
 
+const logLevelRank: Record<LogLevel, number> = {
+  debug: 0,
+  info: 1,
+  warn: 2,
+  error: 3,
+};
+
 const normalizeKey = (key: string) => key.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+export const parseLogLevel = (value?: string): LogLevel => {
+  const normalized = value?.trim().toLowerCase();
+  if (!normalized) {
+    return "info";
+  }
+
+  if (
+    normalized === "debug" ||
+    normalized === "info" ||
+    normalized === "warn" ||
+    normalized === "error"
+  ) {
+    return normalized;
+  }
+
+  throw new Error("Invalid LOG_LEVEL: must be one of debug, info, warn, error");
+};
 
 const truncateSerializedValue = (value: unknown, maxSerializedBytes?: number) => {
   if (!maxSerializedBytes) {
@@ -66,12 +91,18 @@ export const redactValue = (
 
 export const createJsonLogger = ({
   sink = console.log,
-}: { sink?: Sink } = {}) => {
+  level = "info",
+}: { sink?: Sink; level?: LogLevel } = {}) => {
+  const minimumLevel = level;
   const write = (
     level: LogLevel,
     event: string,
     fields: Record<string, unknown> = {},
   ) => {
+    if (logLevelRank[level] < logLevelRank[minimumLevel]) {
+      return;
+    }
+
     const redactedFields = redactValue(fields, {
       maxSerializedBytes: 8 * 1024,
     }) as Record<string, unknown>;

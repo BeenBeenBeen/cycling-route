@@ -1,7 +1,10 @@
 import { z } from "zod";
 
 const requiredText = z.string().trim().min(1);
-const optionalText = z.string().trim().min(1).optional();
+const optionalText = z.preprocess(
+  (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+  z.string().trim().min(1).optional(),
+);
 const requiredTextList = z
   .array(z.string())
   .transform((items) => items.map((item) => item.trim()).filter(Boolean))
@@ -35,5 +38,9 @@ export const routeInputSchema = z.object({
 
 export type RouteInput = z.infer<typeof routeInputSchema>;
 
-export const parseRouteInput = (input: unknown): RouteInput =>
-  routeInputSchema.parse(input);
+export const parseRouteInput = (input: unknown): RouteInput => {
+  const route = routeInputSchema.parse(input);
+  return Object.fromEntries(
+    Object.entries(route).filter(([, value]) => value !== undefined),
+  ) as RouteInput;
+};

@@ -21,7 +21,7 @@ describe("resolveProxyUrl", () => {
 
 describe("createLoggedFetch", () => {
   it("logs headers and body with redaction-ready fields", async () => {
-    const logger = { info: vi.fn(), error: vi.fn() };
+    const logger = { debug: vi.fn(), info: vi.fn(), error: vi.fn() };
     const fetch = vi
       .fn<typeof globalThis.fetch>()
       .mockResolvedValue(new Response("{}", { status: 200, statusText: "OK" }));
@@ -33,8 +33,8 @@ describe("createLoggedFetch", () => {
       body: JSON.stringify({ model: "gpt-test", input: "hello" }),
     });
 
-    expect(logger.info).toHaveBeenCalledWith(
-      "openai.request.started",
+    expect(logger.debug).toHaveBeenCalledWith(
+      "openai.request.debug",
       expect.objectContaining({
         requestHeaders: expect.any(Object),
         requestBody: { model: "gpt-test", input: "hello" },
@@ -50,7 +50,7 @@ describe("createLoggedFetch", () => {
   });
 
   it("logs OpenAI request failures and rethrows", async () => {
-    const logger = { info: vi.fn(), error: vi.fn() };
+    const logger = { debug: vi.fn(), info: vi.fn(), error: vi.fn() };
     const error = new Error("network failed");
     const fetch = vi.fn<typeof globalThis.fetch>().mockRejectedValue(error);
     const logged = createLoggedFetch(fetch, logger as any);

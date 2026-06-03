@@ -11,6 +11,12 @@ export const createRequestLogger =
       requestId,
       method: req.method,
       path: req.originalUrl.split("?")[0],
+    });
+
+    logger.debug("api.request.debug", {
+      requestId,
+      method: req.method,
+      path: req.originalUrl.split("?")[0],
       requestHeaders: req.headers,
       requestBody: req.body,
     });

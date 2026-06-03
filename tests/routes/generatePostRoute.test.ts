@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { ZodError } from "zod";
 import { createGeneratePostHandler } from "../../src/server/routes/generatePostRoute";
 
 const validRoute = {
@@ -61,6 +62,16 @@ describe("createGeneratePostHandler", () => {
 
     expect(res.statusCode).toBe(502);
     expect(res.body).toEqual({ error: "Billing hard limit has been reached" });
+  });
+
+  it("returns 502 when generated content validation fails", async () => {
+    const generatePost = vi.fn().mockRejectedValue(new ZodError([]));
+    const { req, res } = mockHttp(validRoute);
+
+    await createGeneratePostHandler(generatePost)(req, res);
+
+    expect(res.statusCode).toBe(502);
+    expect(res.body).toEqual({ error: "Failed to generate post" });
   });
 });
 

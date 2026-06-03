@@ -4,7 +4,7 @@ import { createRequestLogger } from "../../../src/server/logging/requestLogger";
 
 describe("createRequestLogger", () => {
   it("logs request headers and body", () => {
-    const logger = { info: vi.fn(), error: vi.fn() };
+    const logger = { debug: vi.fn(), info: vi.fn(), error: vi.fn() };
     const middleware = createRequestLogger(logger as any);
     const req = {
       method: "POST",
@@ -28,11 +28,9 @@ describe("createRequestLogger", () => {
 
     expect(next).toHaveBeenCalled();
     expect(res.locals.requestId).toEqual(expect.stringMatching(/^req_/));
-    expect(logger.info).toHaveBeenCalledWith(
-      "api.request.started",
+    expect(logger.debug).toHaveBeenCalledWith(
+      "api.request.debug",
       expect.objectContaining({
-        method: "POST",
-        path: "/api/generate-post",
         requestBody: { routeName: "成都到青城山" },
       }),
     );

@@ -35,4 +35,15 @@ describe("parseRouteInput", () => {
     });
     expect(parsed.highlights).toEqual(["绿道舒服"]);
   });
+
+  it("treats blank optional text fields as omitted", () => {
+    const parsed = parseRouteInput({
+      ...validRoute,
+      bestSeason: "",
+      extraNotes: "   ",
+    });
+
+    expect(parsed).not.toHaveProperty("bestSeason");
+    expect(parsed).not.toHaveProperty("extraNotes");
+  });
 });
