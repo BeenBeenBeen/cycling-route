@@ -11,6 +11,7 @@ export const saveMarkdownRequestSchema = z.object({
   post: generatedPostSchema,
   selectedTitle: z.string().trim().min(1),
   coverPath: z.string().trim().min(1).optional(),
+  gpxPath: z.string().trim().min(1).optional(),
 });
 
 export type SaveMarkdownRequest = z.infer<typeof saveMarkdownRequestSchema>;

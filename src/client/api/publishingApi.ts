@@ -48,6 +48,7 @@ export type SaveMarkdownPayload = {
   post: GeneratedPost;
   selectedTitle: string;
   coverPath?: string;
+  gpxPath?: string;
 };
 
 export type AssistPublishPayload = {

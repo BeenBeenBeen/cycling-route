@@ -30,6 +30,7 @@ const validBody = {
   post,
   selectedTitle: "标题一",
   coverPath: "/tmp/cover.png",
+  gpxPath: "data/routes/test.gpx",
 };
 
 describe("createSaveMarkdownHandler", () => {

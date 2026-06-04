@@ -8,6 +8,7 @@ export type SaveMarkdownPostInput = {
   post: GeneratedPost;
   selectedTitle: string;
   coverPath?: string;
+  gpxPath?: string;
   outputDir?: string;
   now?: Date;
 };
@@ -39,9 +40,10 @@ const renderMarkdown = ({
   post,
   selectedTitle,
   coverPath,
+  gpxPath,
   now,
 }: Required<Pick<SaveMarkdownPostInput, "route" | "post" | "selectedTitle" | "now">> &
-  Pick<SaveMarkdownPostInput, "coverPath">) => `# ${selectedTitle}
+  Pick<SaveMarkdownPostInput, "coverPath" | "gpxPath">) => `# ${selectedTitle}
 
 生成时间：${now.toISOString()}
 
@@ -81,6 +83,11 @@ ${post.hashtags.map((tag) => `#${tag}`).join(" ")}
 ## 备选标题
 
 ${list(post.titleCandidates)}
+${gpxPath ? `
+## GPX 路书
+
+- 路径：${gpxPath}
+` : ""}
 `;
 
 export const saveMarkdownPost = async ({
@@ -88,12 +95,13 @@ export const saveMarkdownPost = async ({
   post,
   selectedTitle,
   coverPath,
+  gpxPath,
   outputDir = path.join(process.cwd(), "data", "posts"),
   now = new Date(),
 }: SaveMarkdownPostInput): Promise<SaveMarkdownPostResult> => {
   await mkdir(outputDir, { recursive: true });
   const baseFilename = `${timestampForFilename(now)}-${slugify(route.routeName) || "route"}`;
-  const markdown = renderMarkdown({ route, post, selectedTitle, coverPath, now });
+  const markdown = renderMarkdown({ route, post, selectedTitle, coverPath, gpxPath, now });
 
   for (let attempt = 1; attempt <= 100; attempt += 1) {
     const suffix = attempt === 1 ? "" : `-${attempt}`;

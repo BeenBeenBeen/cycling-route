@@ -93,4 +93,24 @@ describe("saveMarkdownPost", () => {
       await rm(outputDir, { recursive: true, force: true });
     }
   });
+
+  it("includes the GPX route path when provided", async () => {
+    const outputDir = await mkdtemp(path.join(os.tmpdir(), "cycling-post-"));
+    try {
+      const result = await saveMarkdownPost({
+        route,
+        post,
+        selectedTitle: "标题一",
+        gpxPath: "data/routes/test.gpx",
+        outputDir,
+        now: new Date(2026, 5, 3, 1, 2, 0),
+      });
+
+      const markdown = await readFile(result.markdownPath, "utf8");
+      expect(markdown).toContain("## GPX 路书");
+      expect(markdown).toContain("- 路径：data/routes/test.gpx");
+    } finally {
+      await rm(outputDir, { recursive: true, force: true });
+    }
+  });
 });

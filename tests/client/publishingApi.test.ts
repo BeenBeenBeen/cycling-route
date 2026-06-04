@@ -3,6 +3,7 @@ import {
   generateCover,
   generatePost,
   PublishingApiError,
+  saveMarkdown,
 } from "../../src/client/api/publishingApi";
 
 const route = {
@@ -82,5 +83,41 @@ describe("publishingApi", () => {
         coverSubtitle: "82km / 620m",
       }),
     ).resolves.toEqual(response);
+  });
+
+  it("posts optional GPX path when saving markdown", async () => {
+    const response = { markdownPath: "data/posts/test.md" };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue(response),
+      }),
+    );
+
+    const payload = {
+      route: route as any,
+      post: {
+        titleCandidates: ["一", "二", "三"],
+        body: "正文",
+        guide: "攻略",
+        easterEgg: "彩蛋",
+        hashtags: ["成都骑行", "路线攻略", "周末骑行"],
+        coverTitle: "封面",
+        coverSubtitle: "副标题",
+        imagePrompt: "poster",
+      },
+      selectedTitle: "一",
+      gpxPath: "data/routes/test.gpx",
+    };
+
+    await expect(saveMarkdown(payload)).resolves.toEqual(response);
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/save-markdown",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+    );
   });
 });
