@@ -1,11 +1,16 @@
 <script setup lang="ts">
+import { reactive, watch } from "vue";
 import type { RouteInput } from "../api/publishingApi";
+
+const props = defineProps<{
+  initialRoute?: RouteInput | null;
+}>();
 
 const emit = defineEmits<{
   "submit-route": [route: RouteInput];
 }>();
 
-const form = {
+const form = reactive({
   routeName: "",
   startPoint: "",
   endPoint: "",
@@ -25,7 +30,7 @@ const form = {
   foodRecommendations: "",
   userHashtags: "",
   extraNotes: "",
-};
+});
 
 const lines = (value: string) =>
   value
@@ -42,6 +47,38 @@ const optionalLines = (value: string) => {
   const items = lines(value);
   return items.length === 0 ? undefined : items;
 };
+
+const applyRoute = (route: RouteInput) => {
+  form.routeName = route.routeName;
+  form.startPoint = route.startPoint;
+  form.endPoint = route.endPoint;
+  form.distanceKm = String(route.distanceKm);
+  form.elevationGainM = String(route.elevationGainM);
+  form.difficulty = route.difficulty;
+  form.roadType = route.roadType;
+  form.highlights = route.highlights.join("\n");
+  form.warnings = route.warnings.join("\n");
+  form.supplyPoints = route.supplyPoints.join("\n");
+  form.bestSeason = route.bestSeason ?? "";
+  form.bestStartTime = route.bestStartTime ?? "";
+  form.targetRiders = route.targetRiders ?? "";
+  form.transportation = route.transportation ?? "";
+  form.estimatedDuration = route.estimatedDuration ?? "";
+  form.photoSpots = route.photoSpots?.join("\n") ?? "";
+  form.foodRecommendations = route.foodRecommendations?.join("\n") ?? "";
+  form.userHashtags = route.userHashtags?.join("\n") ?? "";
+  form.extraNotes = route.extraNotes ?? "";
+};
+
+watch(
+  () => props.initialRoute,
+  (nextRoute) => {
+    if (nextRoute) {
+      applyRoute(nextRoute);
+    }
+  },
+  { immediate: true },
+);
 
 const buildRoute = (): RouteInput => ({
     routeName: form.routeName.trim(),

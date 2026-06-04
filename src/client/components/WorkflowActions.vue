@@ -3,11 +3,15 @@ defineProps<{
   loadingAction: string;
   hasPost: boolean;
   hasCover: boolean;
+  canGenerateRoute: boolean;
+  hasRoute: boolean;
   markdownPath: string;
   publishStarted: boolean;
 }>();
 
 const emit = defineEmits<{
+  generateRoute: [];
+  generateGpx: [];
   generatePost: [];
   generateCover: [];
   saveMarkdown: [];
@@ -15,6 +19,8 @@ const emit = defineEmits<{
 }>();
 
 const busyLabel: Record<string, string> = {
+  generateRoute: "生成路线中",
+  generateGpx: "生成 GPX 中",
   generatePost: "生成中",
   generateCover: "生成封面中",
   saveMarkdown: "保存中",
@@ -25,16 +31,22 @@ const busyLabel: Record<string, string> = {
 <template>
   <section class="actions-panel">
     <h2>流程操作</h2>
-    <button :disabled="!!loadingAction" @click="emit('generatePost')">
+    <button data-testid="generate-route" :disabled="!canGenerateRoute || !!loadingAction" @click="emit('generateRoute')">
+      {{ loadingAction === "generateRoute" ? busyLabel.generateRoute : "生成骑行路线" }}
+    </button>
+    <button data-testid="generate-gpx" :disabled="!hasRoute || !!loadingAction" @click="emit('generateGpx')">
+      {{ loadingAction === "generateGpx" ? busyLabel.generateGpx : "生成 GPX 路书" }}
+    </button>
+    <button data-testid="generate-post" :disabled="!!loadingAction" @click="emit('generatePost')">
       {{ loadingAction === "generatePost" ? busyLabel.generatePost : "AI 生成" }}
     </button>
-    <button :disabled="!hasPost || !!loadingAction" @click="emit('generateCover')">
+    <button data-testid="generate-cover" :disabled="!hasPost || !!loadingAction" @click="emit('generateCover')">
       {{ loadingAction === "generateCover" ? busyLabel.generateCover : "生成封面海报" }}
     </button>
-    <button :disabled="!hasPost || !!loadingAction" @click="emit('saveMarkdown')">
+    <button data-testid="save-markdown" :disabled="!hasPost || !!loadingAction" @click="emit('saveMarkdown')">
       {{ loadingAction === "saveMarkdown" ? busyLabel.saveMarkdown : "保存 Markdown" }}
     </button>
-    <button :disabled="!hasPost || !hasCover || !!loadingAction" @click="emit('assistPublish')">
+    <button data-testid="assist-publish" :disabled="!hasPost || !hasCover || !!loadingAction" @click="emit('assistPublish')">
       {{ loadingAction === "assistPublish" ? busyLabel.assistPublish : "辅助发布" }}
     </button>
     <div class="status-stack">

@@ -2,25 +2,49 @@
 import { computed, ref } from "vue";
 import {
   assistPublish,
+  generateGpx,
   generateCover,
   generatePost,
+  generateRoute,
   saveMarkdown,
   PublishingApiError,
   type GeneratedPost,
+  type PlaceCandidate,
+  type PlannedRoute,
   type RouteInput,
+  searchPlaces,
 } from "./api/publishingApi";
 import CoverPreview from "./components/CoverPreview.vue";
+import GpxDownloadPanel from "./components/GpxDownloadPanel.vue";
 import GeneratedPostEditor from "./components/GeneratedPostEditor.vue";
+import PlaceCandidateSelector from "./components/PlaceCandidateSelector.vue";
 import RouteForm from "./components/RouteForm.vue";
+import RouteMap from "./components/RouteMap.vue";
+import RoutePlannerForm from "./components/RoutePlannerForm.vue";
 import WorkflowActions from "./components/WorkflowActions.vue";
 
-type LoadingAction = "" | "generatePost" | "generateCover" | "saveMarkdown" | "assistPublish";
+type LoadingAction =
+  | ""
+  | "searchPlaces"
+  | "generateRoute"
+  | "generateGpx"
+  | "generatePost"
+  | "generateCover"
+  | "saveMarkdown"
+  | "assistPublish";
 type RouteFormHandle = {
   getRoute: () => RouteInput;
 };
 
 const routeForm = ref<RouteFormHandle | null>(null);
 const route = ref<RouteInput | null>(null);
+const startCandidates = ref<PlaceCandidate[]>([]);
+const endCandidates = ref<PlaceCandidate[]>([]);
+const selectedStart = ref<PlaceCandidate | null>(null);
+const selectedEnd = ref<PlaceCandidate | null>(null);
+const plannedRoute = ref<PlannedRoute | null>(null);
+const gpxPath = ref("");
+const gpxUrl = ref("");
 const generatedPost = ref<GeneratedPost | null>(null);
 const selectedTitle = ref("");
 const coverPath = ref("");
@@ -33,6 +57,9 @@ const publishStarted = ref(false);
 
 const hasPost = computed(() => generatedPost.value !== null);
 const hasCover = computed(() => coverPath.value !== "");
+const canGenerateRoute = computed(
+  () => selectedStart.value !== null && selectedEnd.value !== null,
+);
 
 const setError = (error: unknown) => {
   if (error instanceof PublishingApiError) {
@@ -66,6 +93,54 @@ const currentRoute = () => {
   route.value = value;
   return value;
 };
+
+const clearGeneratedAssets = () => {
+  generatedPost.value = null;
+  selectedTitle.value = "";
+  coverPath.value = "";
+  coverUrl.value = "";
+  markdownPath.value = "";
+  publishStarted.value = false;
+};
+
+const onSearchPlaces = (payload: { startQuery: string; endQuery: string }) =>
+  runAction("searchPlaces", async () => {
+    const result = await searchPlaces(payload);
+    startCandidates.value = result.startCandidates;
+    endCandidates.value = result.endCandidates;
+    selectedStart.value = null;
+    selectedEnd.value = null;
+    plannedRoute.value = null;
+    gpxPath.value = "";
+    gpxUrl.value = "";
+    clearGeneratedAssets();
+  });
+
+const onGenerateRoute = () =>
+  runAction("generateRoute", async () => {
+    if (!selectedStart.value || !selectedEnd.value) {
+      throw new Error("请先确认起点和终点");
+    }
+    const result = await generateRoute({
+      start: selectedStart.value,
+      end: selectedEnd.value,
+    });
+    plannedRoute.value = result.route;
+    route.value = result.route.routeFacts;
+    gpxPath.value = "";
+    gpxUrl.value = "";
+    clearGeneratedAssets();
+  });
+
+const onGenerateGpx = () =>
+  runAction("generateGpx", async () => {
+    if (!plannedRoute.value) {
+      throw new Error("请先生成骑行路线");
+    }
+    const result = await generateGpx({ route: plannedRoute.value });
+    gpxPath.value = result.gpxPath;
+    gpxUrl.value = result.gpxUrl;
+  });
 
 const onGeneratePost = () =>
   runAction("generatePost", async () => {
@@ -104,6 +179,7 @@ const onSaveMarkdown = () =>
       post: generatedPost.value,
       selectedTitle: selectedTitle.value,
       coverPath: coverPath.value || undefined,
+      gpxPath: gpxPath.value || undefined,
     });
     markdownPath.value = result.markdownPath;
   });
@@ -139,13 +215,28 @@ const onAssistPublish = () =>
 
     <div class="layout">
       <section class="main-column">
-        <RouteForm ref="routeForm" @submit-route="route = $event" />
+        <RoutePlannerForm @search="onSearchPlaces" />
+        <PlaceCandidateSelector
+          :start-candidates="startCandidates"
+          :end-candidates="endCandidates"
+          :selected-start="selectedStart"
+          :selected-end="selectedEnd"
+          @select-start="selectedStart = $event"
+          @select-end="selectedEnd = $event"
+        />
+        <RouteForm ref="routeForm" :initial-route="route" @submit-route="route = $event" />
         <GeneratedPostEditor
           v-model:post="generatedPost"
           v-model:selected-title="selectedTitle"
         />
       </section>
       <aside class="side-column">
+        <RouteMap :planned-route="plannedRoute" />
+        <GpxDownloadPanel
+          :gpx-path="gpxPath"
+          :gpx-url="gpxUrl"
+          :loading="loadingAction === 'generateGpx'"
+        />
         <CoverPreview
           :cover-path="coverUrl"
           :loading="loadingAction === 'generateCover'"
@@ -155,8 +246,12 @@ const onAssistPublish = () =>
           :loading-action="loadingAction"
           :has-post="hasPost"
           :has-cover="hasCover"
+          :can-generate-route="canGenerateRoute"
+          :has-route="plannedRoute !== null"
           :markdown-path="markdownPath"
           :publish-started="publishStarted"
+          @generate-route="onGenerateRoute"
+          @generate-gpx="onGenerateGpx"
           @generate-post="onGeneratePost"
           @generate-cover="onGenerateCover"
           @save-markdown="onSaveMarkdown"
@@ -267,6 +362,10 @@ label {
 .editor-panel,
 .cover-panel,
 .actions-panel,
+.route-planner,
+.candidate-selector,
+.route-map,
+.gpx-panel,
 .error-banner {
   border: 1px solid #d8dee6;
   border-radius: 8px;
@@ -281,7 +380,11 @@ label {
 .form-section h2,
 .editor-panel h2,
 .cover-panel h2,
-.actions-panel h2 {
+.actions-panel h2,
+.route-planner h2,
+.candidate-selector h2,
+.route-map h2,
+.gpx-panel h2 {
   margin: 0 0 12px;
   font-size: 16px;
 }
@@ -360,6 +463,83 @@ label {
 .actions-panel {
   display: grid;
   gap: 10px;
+}
+
+.candidate-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.candidate-columns > div {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.candidate-columns h3 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.candidate-columns button.selected {
+  border-color: #2f9e44;
+  background: #2f9e44;
+}
+
+.map-shell,
+.map-empty {
+  display: grid;
+  place-items: center;
+  min-height: 180px;
+  border: 1px solid #d8dee6;
+  border-radius: 6px;
+  background: #eef2f6;
+}
+
+.route-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0 0;
+}
+
+.route-facts div {
+  display: grid;
+  gap: 4px;
+}
+
+.route-facts dt {
+  color: #697586;
+  font-size: 12px;
+}
+
+.route-facts dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+.gpx-panel {
+  display: grid;
+  gap: 8px;
+}
+
+.gpx-panel a {
+  display: inline-grid;
+  place-items: center;
+  min-height: 40px;
+  border: 1px solid #d9480f;
+  border-radius: 6px;
+  background: #e8590c;
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.gpx-panel a.disabled {
+  border-color: #c9cfd6;
+  background: #c9cfd6;
+  pointer-events: none;
 }
 
 .status-stack {
