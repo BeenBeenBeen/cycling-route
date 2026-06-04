@@ -12,13 +12,70 @@ export type AppConfig = {
   duckcodingTextModel?: string;
   duckcodingImageModel?: string;
   duckcodingImageSize?: string;
+  amapApiKey?: string;
+  amapJsApiKey?: string;
+  openElevationBaseUrl: string;
+  elevationSampleIntervalM: number;
+  elevationBatchSize: number;
+  elevationGainNoiseThresholdM: number;
   proxy: OpenAIProxyConfig;
   xiaohongshuPublishUrl: string;
 };
 
+const defaultOpenElevationBaseUrl =
+  "https://api.open-elevation.com/api/v1/lookup";
+
 const optionalEnv = (value?: string) => {
   const trimmed = value?.trim();
   return trimmed ? trimmed : undefined;
+};
+
+const parsePositiveIntegerEnv = (
+  name: string,
+  value: string | undefined,
+  defaultValue: number,
+) => {
+  const normalized = optionalEnv(value);
+  if (normalized === undefined) {
+    return defaultValue;
+  }
+
+  if (!/^\d+$/.test(normalized)) {
+    throw new Error(`Invalid ${name}: must be a positive integer`);
+  }
+
+  const parsed = Number(normalized);
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+    throw new Error(`Invalid ${name}: must be a positive integer`);
+  }
+
+  return parsed;
+};
+
+const parseNonNegativeIntegerEnv = (
+  name: string,
+  value: string | undefined,
+  defaultValue: number,
+) => {
+  const normalized = optionalEnv(value);
+  if (normalized === undefined) {
+    return defaultValue;
+  }
+
+  if (!/^\d+$/.test(normalized)) {
+    throw new Error(
+      `Invalid ${name}: must be zero or a positive integer`,
+    );
+  }
+
+  const parsed = Number(normalized);
+  if (!Number.isSafeInteger(parsed)) {
+    throw new Error(
+      `Invalid ${name}: must be zero or a positive integer`,
+    );
+  }
+
+  return parsed;
 };
 
 export const loadConfig = (): AppConfig => ({
@@ -30,6 +87,26 @@ export const loadConfig = (): AppConfig => ({
   duckcodingTextModel: optionalEnv(process.env.DUCKCODING_TEXT_MODEL),
   duckcodingImageModel: optionalEnv(process.env.DUCKCODING_IMAGE_MODEL),
   duckcodingImageSize: optionalEnv(process.env.DUCKCODING_IMAGE_SIZE),
+  amapApiKey: optionalEnv(process.env.AMAP_API_KEY),
+  amapJsApiKey: optionalEnv(process.env.AMAP_JS_API_KEY),
+  openElevationBaseUrl:
+    optionalEnv(process.env.OPEN_ELEVATION_BASE_URL) ??
+    defaultOpenElevationBaseUrl,
+  elevationSampleIntervalM: parsePositiveIntegerEnv(
+    "ELEVATION_SAMPLE_INTERVAL_M",
+    process.env.ELEVATION_SAMPLE_INTERVAL_M,
+    100,
+  ),
+  elevationBatchSize: parsePositiveIntegerEnv(
+    "ELEVATION_BATCH_SIZE",
+    process.env.ELEVATION_BATCH_SIZE,
+    100,
+  ),
+  elevationGainNoiseThresholdM: parseNonNegativeIntegerEnv(
+    "ELEVATION_GAIN_NOISE_THRESHOLD_M",
+    process.env.ELEVATION_GAIN_NOISE_THRESHOLD_M,
+    3,
+  ),
   proxy: {
     httpProxy: optionalEnv(process.env.HTTP_PROXY ?? process.env.http_proxy),
     httpsProxy: optionalEnv(process.env.HTTPS_PROXY ?? process.env.https_proxy),

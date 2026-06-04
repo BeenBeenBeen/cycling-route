@@ -12,6 +12,12 @@ const config: AppConfig = {
   duckcodingTextModel: "duck-text-test",
   duckcodingImageModel: "duck-image-test",
   duckcodingImageSize: "1024x1536",
+  amapApiKey: "amap-server-key",
+  amapJsApiKey: "amap-js-key",
+  openElevationBaseUrl: "https://elevation.test/lookup",
+  elevationSampleIntervalM: 250,
+  elevationBatchSize: 75,
+  elevationGainNoiseThresholdM: 5,
   proxy: {},
   xiaohongshuPublishUrl: "https://example.test/publish",
 };
@@ -51,8 +57,16 @@ describe("createProductionDependencies", () => {
         duckcodingTextModel: "duck-text-test",
         duckcodingImageModel: "duck-image-test",
         duckcodingImageSize: "1024x1536",
+        hasAmapApiKey: true,
+        hasAmapJsApiKey: true,
+        openElevationBaseUrl: "https://elevation.test/lookup",
+        elevationSampleIntervalM: 250,
+        elevationBatchSize: 75,
+        elevationGainNoiseThresholdM: 5,
       }),
     );
+    expect(JSON.stringify(logger.info.mock.calls)).not.toContain("amap-server-key");
+    expect(JSON.stringify(logger.info.mock.calls)).not.toContain("amap-js-key");
   });
 
   it("returns all API dependencies when configuration is complete", () => {
