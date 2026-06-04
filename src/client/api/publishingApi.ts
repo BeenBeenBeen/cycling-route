@@ -31,6 +31,75 @@ export type GeneratedPost = {
   imagePrompt: string;
 };
 
+export type Coordinate = {
+  lng: number;
+  lat: number;
+};
+
+export type PlaceCandidate = {
+  id: string;
+  name: string;
+  address?: string;
+  city?: string;
+  district?: string;
+  location: { gcj02: Coordinate };
+  source: "amap";
+};
+
+export type ElevationPoint = Coordinate & {
+  distanceM: number;
+  ele?: number;
+};
+
+export type PlannedRoute = {
+  routeId: string;
+  routeName: string;
+  start: PlaceCandidate;
+  end: PlaceCandidate;
+  waypoints: PlaceCandidate[];
+  distanceKm: number;
+  estimatedDurationMin?: number;
+  polylineGcj02: Coordinate[];
+  polylineWgs84: Coordinate[];
+  elevation: {
+    status: "success" | "partial" | "failed";
+    sampleIntervalM: number;
+    batchSize: number;
+    gainNoiseThresholdM: number;
+    points: ElevationPoint[];
+    elevationGainM?: number;
+    error?: string;
+  };
+  routeFacts: RouteInput;
+};
+
+export type SearchPlacesPayload = {
+  startQuery: string;
+  endQuery: string;
+  city?: string;
+  limit?: number;
+};
+
+export type GenerateRoutePayload = {
+  start: PlaceCandidate;
+  end: PlaceCandidate;
+  waypoints?: PlaceCandidate[];
+  sampleIntervalM?: number;
+  elevationBatchSize?: number;
+};
+
+export type GenerateGpxPayload = {
+  route: PlannedRoute;
+  name?: string;
+  allowMissingElevation?: boolean;
+};
+
+export type GenerateGpxResponse = {
+  gpxPath: string;
+  gpxUrl: string;
+  stravaCompatible: boolean;
+};
+
 export type GenerateCoverPayload = {
   route: RouteInput;
   imagePrompt: string;
@@ -101,6 +170,18 @@ export const generatePost = (route: RouteInput) =>
 
 export const generateCover = (payload: GenerateCoverPayload) =>
   requestJson<GenerateCoverResponse>("/api/generate-cover", payload);
+
+export const searchPlaces = (payload: SearchPlacesPayload) =>
+  requestJson<{
+    startCandidates: PlaceCandidate[];
+    endCandidates: PlaceCandidate[];
+  }>("/api/search-places", payload);
+
+export const generateRoute = (payload: GenerateRoutePayload) =>
+  requestJson<{ route: PlannedRoute }>("/api/generate-route", payload);
+
+export const generateGpx = (payload: GenerateGpxPayload) =>
+  requestJson<GenerateGpxResponse>("/api/generate-gpx", payload);
 
 export const saveMarkdown = (payload: SaveMarkdownPayload) =>
   requestJson<{ markdownPath: string }>("/api/save-markdown", payload);
