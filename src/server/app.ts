@@ -17,12 +17,17 @@ import {
   createSaveMarkdownHandler,
   type SaveMarkdown,
 } from "./routes/saveMarkdownRoute";
+import {
+  createSearchPlacesHandler,
+  type SearchPlaces,
+} from "./routes/searchPlacesRoute";
 
 export type AppDependencies = {
   generateCover?: GenerateCover;
   generatePost?: GeneratePost;
   assistPublish?: AssistPublish;
   saveMarkdown?: SaveMarkdown;
+  searchPlaces?: SearchPlaces;
   logger?: JsonLogger;
   logLevel?: LogLevel;
 };
@@ -52,6 +57,10 @@ export const createApp = (dependencies: AppDependencies = {}) => {
 
   if (dependencies.assistPublish) {
     app.post("/api/assist-publish", createAssistPublishHandler(dependencies.assistPublish));
+  }
+
+  if (dependencies.searchPlaces) {
+    app.post("/api/search-places", createSearchPlacesHandler(dependencies.searchPlaces));
   }
 
   return app;

@@ -3,6 +3,7 @@ import type { AppConfig } from "./config";
 import { createJsonLogger, type JsonLogger } from "./logging/jsonLogger";
 import { createOpenaiCoverBackgroundGenerator } from "./services/openaiCoverBackgroundGenerator";
 import { createOpenaiPostGenerator } from "./services/openaiPostGenerator";
+import { createAmapPlaceSearch } from "./services/amapPlaceSearch";
 import { composeCoverPoster } from "./services/coverPosterComposer";
 import { saveMarkdownPost } from "./services/markdownPostStore";
 import { createXiaohongshuPublisher } from "./services/xiaohongshuPublisher";
@@ -10,6 +11,7 @@ import { createAssistPublishUseCase } from "./useCases/assistPublishUseCase";
 import { createGenerateCoverUseCase } from "./useCases/generateCoverUseCase";
 import { createGeneratePostUseCase } from "./useCases/generatePostUseCase";
 import { createSaveMarkdownUseCase } from "./useCases/saveMarkdownUseCase";
+import { createSearchPlacesUseCase } from "./useCases/searchPlacesUseCase";
 
 export const createProductionDependencies = (
   config: AppConfig,
@@ -66,6 +68,12 @@ export const createProductionDependencies = (
     assistPublish: createAssistPublishUseCase({
       assistPublish: createXiaohongshuPublisher({
         publishUrl: config.xiaohongshuPublishUrl,
+      }),
+    }),
+    searchPlaces: createSearchPlacesUseCase({
+      searchPlaces: createAmapPlaceSearch({
+        apiKey: config.amapApiKey,
+        logger,
       }),
     }),
   };

@@ -36,6 +36,10 @@ describe("app API route wiring", () => {
       }),
       saveMarkdown: vi.fn().mockResolvedValue({ markdownPath: "/tmp/post.md" }),
       assistPublish: vi.fn().mockResolvedValue({ ok: true }),
+      searchPlaces: vi.fn().mockResolvedValue({
+        startCandidates: [],
+        endCandidates: [],
+      }),
     };
     const app = createApp(dependencies as any);
 
@@ -83,11 +87,30 @@ describe("app API route wiring", () => {
       statusCode: 200,
       body: { ok: true },
     });
+    expect(
+      await invoke(app, "post", "/api/search-places", {
+        startQuery: "犀浦",
+        endQuery: "青城山",
+        city: "成都",
+      }),
+    ).toMatchObject({
+      statusCode: 200,
+      body: {
+        startCandidates: [],
+        endCandidates: [],
+      },
+    });
 
     expect(dependencies.generatePost).toHaveBeenCalledWith(route);
     expect(dependencies.generateCover).toHaveBeenCalledOnce();
     expect(dependencies.saveMarkdown).toHaveBeenCalledOnce();
     expect(dependencies.assistPublish).toHaveBeenCalledOnce();
+    expect(dependencies.searchPlaces).toHaveBeenCalledWith({
+      startQuery: "犀浦",
+      endQuery: "青城山",
+      city: "成都",
+      limit: 5,
+    });
   });
 });
 
