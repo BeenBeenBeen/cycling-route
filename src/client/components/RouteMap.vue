@@ -4,6 +4,8 @@ import type { PlannedRoute } from "../api/publishingApi";
 defineProps<{
   plannedRoute: PlannedRoute | null;
 }>();
+
+const amapJsApiConfigured = Boolean(import.meta.env.VITE_AMAP_JS_API_KEY);
 </script>
 
 <template>
@@ -11,7 +13,11 @@ defineProps<{
     <h2>路线地图</h2>
     <div v-if="!plannedRoute" class="map-empty">尚未生成路线</div>
     <div v-else>
-      <div class="map-shell" data-testid="route-map-canvas">
+      <div
+        class="map-shell"
+        data-testid="route-map-canvas"
+        :data-amap-configured="String(amapJsApiConfigured)"
+      >
         <strong>{{ plannedRoute.routeName }}</strong>
       </div>
       <dl class="route-facts">

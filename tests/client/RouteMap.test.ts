@@ -27,5 +27,8 @@ describe("RouteMap", () => {
     expect(wrapper.text()).toContain("犀浦到青城山");
     expect(wrapper.text()).toContain("12.35 km");
     expect(wrapper.text()).toContain("120 m");
+    expect(wrapper.get('[data-testid="route-map-canvas"]').attributes()).toHaveProperty(
+      "data-amap-configured",
+    );
   });
 });
