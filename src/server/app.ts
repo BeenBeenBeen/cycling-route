@@ -14,6 +14,10 @@ import {
   type GeneratePost,
 } from "./routes/generatePostRoute";
 import {
+  createGenerateRouteHandler,
+  type GenerateRoute,
+} from "./routes/generateRouteRoute";
+import {
   createSaveMarkdownHandler,
   type SaveMarkdown,
 } from "./routes/saveMarkdownRoute";
@@ -28,6 +32,7 @@ export type AppDependencies = {
   assistPublish?: AssistPublish;
   saveMarkdown?: SaveMarkdown;
   searchPlaces?: SearchPlaces;
+  generateRoute?: GenerateRoute;
   logger?: JsonLogger;
   logLevel?: LogLevel;
 };
@@ -61,6 +66,10 @@ export const createApp = (dependencies: AppDependencies = {}) => {
 
   if (dependencies.searchPlaces) {
     app.post("/api/search-places", createSearchPlacesHandler(dependencies.searchPlaces));
+  }
+
+  if (dependencies.generateRoute) {
+    app.post("/api/generate-route", createGenerateRouteHandler(dependencies.generateRoute));
   }
 
   return app;

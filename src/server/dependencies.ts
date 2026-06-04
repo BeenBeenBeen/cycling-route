@@ -3,13 +3,16 @@ import type { AppConfig } from "./config";
 import { createJsonLogger, type JsonLogger } from "./logging/jsonLogger";
 import { createOpenaiCoverBackgroundGenerator } from "./services/openaiCoverBackgroundGenerator";
 import { createOpenaiPostGenerator } from "./services/openaiPostGenerator";
+import { createAmapCyclingRoutePlanner } from "./services/amapCyclingRoutePlanner";
 import { createAmapPlaceSearch } from "./services/amapPlaceSearch";
 import { composeCoverPoster } from "./services/coverPosterComposer";
 import { saveMarkdownPost } from "./services/markdownPostStore";
+import { createOpenElevationProvider } from "./services/openElevationProvider";
 import { createXiaohongshuPublisher } from "./services/xiaohongshuPublisher";
 import { createAssistPublishUseCase } from "./useCases/assistPublishUseCase";
 import { createGenerateCoverUseCase } from "./useCases/generateCoverUseCase";
 import { createGeneratePostUseCase } from "./useCases/generatePostUseCase";
+import { createGenerateRouteUseCase } from "./useCases/generateRouteUseCase";
 import { createSaveMarkdownUseCase } from "./useCases/saveMarkdownUseCase";
 import { createSearchPlacesUseCase } from "./useCases/searchPlacesUseCase";
 
@@ -75,6 +78,20 @@ export const createProductionDependencies = (
         apiKey: config.amapApiKey,
         logger,
       }),
+    }),
+    generateRoute: createGenerateRouteUseCase({
+      planCyclingRoute: createAmapCyclingRoutePlanner({
+        apiKey: config.amapApiKey,
+        logger,
+      }),
+      lookupElevation: createOpenElevationProvider({
+        baseUrl: config.openElevationBaseUrl,
+        batchSize: config.elevationBatchSize,
+        logger,
+      }),
+      sampleIntervalM: config.elevationSampleIntervalM,
+      elevationBatchSize: config.elevationBatchSize,
+      gainNoiseThresholdM: config.elevationGainNoiseThresholdM,
     }),
   };
 };

@@ -76,6 +76,8 @@ describe("createProductionDependencies", () => {
     expect(dependencies.generateCover).toEqual(expect.any(Function));
     expect(dependencies.saveMarkdown).toEqual(expect.any(Function));
     expect(dependencies.assistPublish).toEqual(expect.any(Function));
+    expect(dependencies.searchPlaces).toEqual(expect.any(Function));
+    expect(dependencies.generateRoute).toEqual(expect.any(Function));
     expect(dependencies.logger).toBeDefined();
   });
 

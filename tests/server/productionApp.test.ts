@@ -10,6 +10,12 @@ const config = {
   duckcodingTextModel: "gpt-5.5",
   duckcodingImageModel: "gpt-image-1",
   duckcodingImageSize: "1024x1536",
+  amapApiKey: "amap-server-key",
+  amapJsApiKey: "amap-js-key",
+  openElevationBaseUrl: "https://api.open-elevation.com/api/v1/lookup",
+  elevationSampleIntervalM: 100,
+  elevationBatchSize: 100,
+  elevationGainNoiseThresholdM: 3,
   proxy: {},
   xiaohongshuPublishUrl: "https://creator.xiaohongshu.com/publish/publish",
 };
