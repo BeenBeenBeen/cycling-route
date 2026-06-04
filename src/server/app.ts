@@ -18,6 +18,11 @@ import {
   type GenerateRoute,
 } from "./routes/generateRouteRoute";
 import {
+  createGenerateGpxHandler,
+  type GenerateGpx,
+} from "./routes/generateGpxRoute";
+import { createMediaRoutesHandler } from "./routes/mediaRoutesRoute";
+import {
   createSaveMarkdownHandler,
   type SaveMarkdown,
 } from "./routes/saveMarkdownRoute";
@@ -33,6 +38,7 @@ export type AppDependencies = {
   saveMarkdown?: SaveMarkdown;
   searchPlaces?: SearchPlaces;
   generateRoute?: GenerateRoute;
+  generateGpx?: GenerateGpx;
   logger?: JsonLogger;
   logLevel?: LogLevel;
 };
@@ -71,6 +77,12 @@ export const createApp = (dependencies: AppDependencies = {}) => {
   if (dependencies.generateRoute) {
     app.post("/api/generate-route", createGenerateRouteHandler(dependencies.generateRoute));
   }
+
+  if (dependencies.generateGpx) {
+    app.post("/api/generate-gpx", createGenerateGpxHandler(dependencies.generateGpx));
+  }
+
+  app.get("/media/routes/:filename", createMediaRoutesHandler());
 
   return app;
 };

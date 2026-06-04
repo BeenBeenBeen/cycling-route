@@ -80,6 +80,11 @@ describe("app API route wiring", () => {
           supplyPoints: ["待补充"],
         },
       }),
+      generateGpx: vi.fn().mockResolvedValue({
+        gpxPath: "data/routes/route-1.gpx",
+        gpxUrl: "/media/routes/route-1.gpx",
+        stravaCompatible: true,
+      }),
     };
     const app = createApp(dependencies as any);
 
@@ -164,6 +169,57 @@ describe("app API route wiring", () => {
         },
       },
     });
+    expect(
+      await invoke(app, "post", "/api/generate-gpx", {
+        route: {
+          routeId: "route_1",
+          routeName: "犀浦到青城山",
+          start: {
+            id: "B001",
+            name: "犀浦",
+            location: { gcj02: { lng: 104.012, lat: 30.758 } },
+            source: "amap",
+          },
+          end: {
+            id: "B002",
+            name: "青城山",
+            location: { gcj02: { lng: 103.568, lat: 30.905 } },
+            source: "amap",
+          },
+          waypoints: [],
+          distanceKm: 12.35,
+          polylineGcj02: [{ lng: 104.012, lat: 30.758 }],
+          polylineWgs84: [{ lng: 104.01, lat: 30.756 }],
+          elevation: {
+            status: "success",
+            sampleIntervalM: 100,
+            batchSize: 50,
+            gainNoiseThresholdM: 5,
+            points: [{ distanceM: 0, lng: 104.01, lat: 30.756, ele: 500 }],
+            elevationGainM: 0,
+          },
+          routeFacts: {
+            routeName: "犀浦到青城山",
+            startPoint: "犀浦",
+            endPoint: "青城山",
+            distanceKm: 12.35,
+            elevationGainM: 0,
+            difficulty: "待确认",
+            roadType: "待确认",
+            highlights: ["待补充"],
+            warnings: ["待补充"],
+            supplyPoints: ["待补充"],
+          },
+        },
+      }),
+    ).toMatchObject({
+      statusCode: 200,
+      body: {
+        gpxPath: "data/routes/route-1.gpx",
+        gpxUrl: "/media/routes/route-1.gpx",
+        stravaCompatible: true,
+      },
+    });
 
     expect(dependencies.generatePost).toHaveBeenCalledWith(route);
     expect(dependencies.generateCover).toHaveBeenCalledOnce();
@@ -176,6 +232,7 @@ describe("app API route wiring", () => {
       limit: 5,
     });
     expect(dependencies.generateRoute).toHaveBeenCalledOnce();
+    expect(dependencies.generateGpx).toHaveBeenCalledOnce();
   });
 });
 

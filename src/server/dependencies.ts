@@ -8,11 +8,13 @@ import { createAmapPlaceSearch } from "./services/amapPlaceSearch";
 import { composeCoverPoster } from "./services/coverPosterComposer";
 import { saveMarkdownPost } from "./services/markdownPostStore";
 import { createOpenElevationProvider } from "./services/openElevationProvider";
+import { writeGpxRoute } from "./services/gpxRouteWriter";
 import { createXiaohongshuPublisher } from "./services/xiaohongshuPublisher";
 import { createAssistPublishUseCase } from "./useCases/assistPublishUseCase";
 import { createGenerateCoverUseCase } from "./useCases/generateCoverUseCase";
 import { createGeneratePostUseCase } from "./useCases/generatePostUseCase";
 import { createGenerateRouteUseCase } from "./useCases/generateRouteUseCase";
+import { createGenerateGpxUseCase } from "./useCases/generateGpxUseCase";
 import { createSaveMarkdownUseCase } from "./useCases/saveMarkdownUseCase";
 import { createSearchPlacesUseCase } from "./useCases/searchPlacesUseCase";
 
@@ -92,6 +94,13 @@ export const createProductionDependencies = (
       sampleIntervalM: config.elevationSampleIntervalM,
       elevationBatchSize: config.elevationBatchSize,
       gainNoiseThresholdM: config.elevationGainNoiseThresholdM,
+    }),
+    generateGpx: createGenerateGpxUseCase({
+      writeGpx: async (input) =>
+        await writeGpxRoute({
+          ...input,
+          outputDir: "data/routes",
+        }),
     }),
   };
 };

@@ -29,5 +29,7 @@ describe("createProductionApp", () => {
 
     expect(routes).toContain("/api/generate-post");
     expect(routes).toContain("/api/generate-cover");
+    expect(routes).toContain("/api/generate-gpx");
+    expect(routes).toContain("/media/routes/:filename");
   });
 });
