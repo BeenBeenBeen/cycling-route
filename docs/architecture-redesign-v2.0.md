@@ -1,9 +1,13 @@
-# 成都周边骑行路线发布工具架构重设计
+# 成都周边骑行路线发布工具 V2.0 架构设计
 
 ## 1. 目标
 
 本项目重构为一个本地运行的 Web 应用，用于辅助生成成都周边骑行路线的小红书发布素材。用户录入路线信息后，系统完成以下工作：
 
+- V2.0 支持用户只输入起点和终点，并从高德地图候选地点中人工确认。
+- V2.0 使用高德地图生成骑行路线，并在前端地图中渲染路线。
+- V2.0 按路线每 100m 采样，通过 Open-Elevation 批量查询海拔，计算累计爬升。
+- V2.0 生成可导入 Strava 的 GPX 路书，并提供本地下载。
 - 生成结构化小红书文案。
 - 生成类似 Strava 风格的封面背景。
 - 在本地将路线事实叠加到封面海报。
@@ -18,13 +22,19 @@
 - 领域模型使用 Zod 统一校验，包括路线输入、生成文案、封面请求和发布请求。
 - AI 调用、图片合成、文件保存、浏览器自动化都放在服务层，通过用例层调用。
 - 关键路线事实由用户输入和本地渲染控制，不交给图片模型生成。
-- DuckCoding OpenAI-compatible API、文件系统、Sharp、Playwright 都隔离在基础设施服务中，便于测试和替换。
+- 高德地图、Open-Elevation、DuckCoding OpenAI-compatible API、文件系统、Sharp、Playwright 都隔离在基础设施服务中，便于测试和替换。
+- 高德返回的 GCJ-02 坐标只用于高德地图展示；GPX 和 Strava 导入文件必须输出 WGS84 坐标。
+- 路线、海拔、GPX 是 V2.0 的上游事实来源；用户仍可人工确认或修正累计爬升、亮点、风险、补给等发布内容。
 - 发布辅助永远不点击最终发布按钮。
 
 ## 3. 分层设计
 
 ```text
 Vue Client
+  RoutePlannerForm
+  PlaceCandidateSelector
+  RouteMap
+  GpxDownloadPanel
   RouteForm
   GeneratedPostEditor
   CoverPreview
@@ -39,6 +49,9 @@ Express API
         |
         v
 Application Use Cases
+  SearchPlacesUseCase
+  GenerateRouteUseCase
+  GenerateGpxUseCase
   GeneratePostUseCase
   GenerateCoverUseCase
   SaveMarkdownUseCase
@@ -46,6 +59,11 @@ Application Use Cases
         |
         v
 Infrastructure Services
+  AMap place search and cycling route API
+  AMap JS API route rendering
+  GCJ-02 to WGS84 coordinate converter
+  Open-Elevation batch API
+  GPX route writer
   DuckCoding Chat Completions API (OpenAI-compatible)
   DuckCoding Images API (OpenAI-compatible)
   Sharp cover composer
@@ -62,6 +80,10 @@ src/
     api/
       publishingApi.ts
     components/
+      RoutePlannerForm.vue
+      PlaceCandidateSelector.vue
+      RouteMap.vue
+      GpxDownloadPanel.vue
       RouteForm.vue
       GeneratedPostEditor.vue
       CoverPreview.vue
@@ -73,22 +95,39 @@ src/
     logging/
       requestLogger.ts
     domain/
+      placeCandidate.ts
+      plannedRoute.ts
+      elevationProfile.ts
+      gpxRoute.ts
       routeInput.ts
       generatedPost.ts
       coverPoster.ts
       publishDraft.ts
       promptBuilder.ts
     useCases/
+      searchPlacesUseCase.ts
+      generateRouteUseCase.ts
+      generateGpxUseCase.ts
       generatePostUseCase.ts
       generateCoverUseCase.ts
       saveMarkdownUseCase.ts
       assistPublishUseCase.ts
     routes/
+      searchPlacesRoute.ts
+      generateRouteRoute.ts
+      generateGpxRoute.ts
       generatePostRoute.ts
       generateCoverRoute.ts
       saveMarkdownRoute.ts
       assistPublishRoute.ts
     services/
+      amapPlaceSearch.ts
+      amapCyclingRoutePlanner.ts
+      coordinateConverter.ts
+      routeSampler.ts
+      openElevationProvider.ts
+      elevationGainCalculator.ts
+      gpxRouteWriter.ts
       openaiClient.ts
       openaiPostGenerator.ts
       openaiCoverBackgroundGenerator.ts
@@ -128,7 +167,42 @@ flowchart TD
   R --> S[用户人工检查并发布]
 ```
 
-### 5.1 文案生成接口
+V2.0 不推翻上述主流程，而是在 `RouteForm` 前增加路线规划阶段。路线规划阶段生成的里程、累计爬升、起终点、路线名和 GPX 路径会自动填充到现有路线表单与后续发布素材中。
+
+### 5.1 V2.0 路线生成与 GPX 数据流图
+
+```mermaid
+flowchart TD
+  A[用户输入起点和终点文本] --> B[POST /api/search-places]
+  B --> C[高德地点搜索]
+  C --> D[返回起点和终点候选]
+  D --> E[用户人工确认起终点]
+  E --> F[POST /api/generate-route]
+  F --> G[高德骑行路线规划]
+  G --> H[获得 GCJ-02 路线 polyline]
+  H --> I[前端高德地图渲染路线]
+  H --> J[坐标转换为 WGS84]
+  J --> K[每 100m 沿线采样]
+  K --> L[Open-Elevation 批量查询海拔]
+  L --> M[计算累计爬升和海拔剖面]
+  M --> N[返回 PlannedRoute]
+  N --> O[用户确认或修正路线事实]
+  O --> P[POST /api/generate-gpx]
+  P --> Q[写入 data/routes/*.gpx]
+  Q --> R[返回 gpxPath 和 gpxUrl]
+  O --> S[继续调用 /api/generate-post]
+```
+
+V2.0 数据流约束：
+
+- 用户只需要输入起点和终点文本，但必须从候选地点中人工确认最终点位。
+- V2.0 暂不支持途经点，领域模型预留 `waypoints` 字段但接口默认传空数组。
+- 高德地图展示使用 GCJ-02；GPX、Open-Elevation、Strava 导入使用 WGS84。
+- Open-Elevation 按每 100m 采样，批量查询默认每批 100 个点，避免逐点请求。
+- Open-Elevation 失败时不阻断路线生成，接口返回 `elevation.status = "failed"`，前端提示用户手工填写累计爬升后再生成文案或 GPX。
+- GPX 文件必须包含 `<ele>`，只有海拔查询失败且用户确认继续时才允许生成无 `<ele>` 的降级 GPX。
+
+### 5.2 文案生成接口
 
 `/api/generate-post` 使用 DuckCoding 提供的 OpenAI-compatible Chat Completions API。服务层仍使用 OpenAI Node SDK，但必须配置 DuckCoding 的 `baseURL`，并使用 `DUCKCODING_TEXT_API_KEY` 作为文案生成密钥。
 
@@ -192,8 +266,13 @@ const response = await client.images.generate({
 
 调用约束：
 
-- `prompt` 来自 `GeneratedPost.imagePrompt`，并追加“无最终中文文字、无可读标签、无数字、水印或 UI 文本”等约束。
+- `prompt` 来自 `GeneratedPost.imagePrompt`，并追加骑行俱乐部小红书海报风格约束。
+- 背景应是竖版全屏实拍感骑行海报，可包含山路、海岸公路、森林公路、远山、骑行者剪影、骑行队伍、晨昏光影、雾气、动感模糊或强烈阴影。
+- 背景需要保留大块干净区域，便于本地叠加白色大标题和路线数据。
+- 背景可使用胶片颗粒、光晕、笔刷动势、轻微拼贴感，形成小红书骑行俱乐部活动海报质感。
+- 背景不得生成地图、路线轨迹、等高线、地理纹理、UI 元素、logo、水印、可读文字或数字。
 - 图片接口只负责生成背景图，路线名、里程、爬升、难度、起终点等关键事实必须由本地 Sharp 合成。
+- 本地 Sharp 合成应采用全屏压图排版：白色大标题、顶部小型路线/俱乐部标识区、中部手绘感路线线条、底部路线事实信息，不使用深色信息卡片。
 - 默认模型为 `gpt-image-1`，默认背景生成尺寸为 `1024x1536`，默认生成数量为 `1`。
 - 本地 Sharp 最终合成海报固定输出为小红书常用竖图尺寸 `1080x1440`，比例为 `3:4`。
 - 如果响应包含 `b64_json`，服务层直接写入 `data/images/background-*.png`；如果响应包含图片 URL，服务层下载后再写入本地文件。
@@ -201,7 +280,79 @@ const response = await client.images.generate({
 
 ## 7. 核心领域模型
 
-### 7.1 RouteInput
+### 7.1 PlaceCandidate
+
+高德地点搜索返回的候选点。前端必须展示候选列表，让用户确认后才能规划路线。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---:|---:|---|
+| `id` | string | 是 | 高德 POI id；没有 POI id 时使用稳定派生 id |
+| `name` | string | 是 | 地点名称 |
+| `address` | string | 否 | 地址或区域说明 |
+| `city` | string | 否 | 城市 |
+| `district` | string | 否 | 区县 |
+| `location.gcj02.lng` | number | 是 | 高德 GCJ-02 经度 |
+| `location.gcj02.lat` | number | 是 | 高德 GCJ-02 纬度 |
+| `source` | string | 是 | 固定为 `amap` |
+
+### 7.2 PlannedRoute
+
+路线规划结果，是 V2.0 后续文案、封面、Markdown 和 GPX 的事实来源。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---:|---:|---|
+| `routeId` | string | 是 | 本地生成的路线 id |
+| `routeName` | string | 是 | 根据起终点生成的默认路线名，可编辑 |
+| `start` | PlaceCandidate | 是 | 用户确认的起点 |
+| `end` | PlaceCandidate | 是 | 用户确认的终点 |
+| `waypoints` | PlaceCandidate[] | 是 | V2.0 固定为空数组，为后续多点规划预留 |
+| `distanceKm` | number | 是 | 高德路线距离，单位 km |
+| `estimatedDurationMin` | number | 否 | 高德估算骑行耗时，单位分钟 |
+| `polylineGcj02` | Coordinate[] | 是 | 用于高德地图渲染的 GCJ-02 路线 |
+| `polylineWgs84` | Coordinate[] | 是 | 用于 GPX 和 Open-Elevation 的 WGS84 路线 |
+| `elevation` | ElevationProfile | 是 | 海拔查询和累计爬升结果 |
+| `routeFacts` | RouteInput | 是 | 自动填充到现有发布表单的路线事实 |
+
+`Coordinate` 结构：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---:|---:|---|
+| `lng` | number | 是 | 经度 |
+| `lat` | number | 是 | 纬度 |
+
+### 7.3 ElevationProfile
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---:|---:|---|
+| `status` | string | 是 | `success`、`partial` 或 `failed` |
+| `sampleIntervalM` | number | 是 | 默认 `100` |
+| `batchSize` | number | 是 | 默认 `100` |
+| `gainNoiseThresholdM` | number | 是 | 默认 `3`，过滤小幅海拔噪声 |
+| `points` | ElevationPoint[] | 是 | 含距离、坐标和海拔的采样点 |
+| `elevationGainM` | number | 否 | 累计爬升，失败时为空 |
+| `error` | string | 否 | 海拔查询失败原因，需脱敏 |
+
+`ElevationPoint` 结构：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---:|---:|---|
+| `distanceM` | number | 是 | 沿路线累计距离 |
+| `lng` | number | 是 | WGS84 经度 |
+| `lat` | number | 是 | WGS84 纬度 |
+| `ele` | number | 否 | 海拔，单位米 |
+
+### 7.4 GpxRoute
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---:|---:|---|
+| `routeId` | string | 是 | 来源路线 id |
+| `name` | string | 是 | GPX 路线名 |
+| `points` | ElevationPoint[] | 是 | WGS84 坐标点，成功时包含海拔 |
+| `gpxPath` | string | 是 | 本地保存路径 |
+| `gpxUrl` | string | 是 | 前端下载路径 |
+| `stravaCompatible` | boolean | 是 | 是否满足 Strava 导入要求 |
+
+### 7.5 RouteInput
 
 | 字段 | 类型 | 必填 | 规则 |
 |---|---:|---:|---|
@@ -225,7 +376,9 @@ const response = await client.images.generate({
 | `userHashtags` | string[] | 否 | 清洗空白项 |
 | `extraNotes` | string | 否 | 非空字符串 |
 
-### 7.2 GeneratedPost
+V2.0 中 `RouteInput` 仍是文案和封面链路的输入模型，但它优先由 `PlannedRoute.routeFacts` 自动填充。用户可以在前端继续编辑 `difficulty`、`roadType`、`highlights`、`warnings`、`supplyPoints` 等字段。
+
+### 7.6 GeneratedPost
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---:|---:|---|
@@ -246,7 +399,8 @@ const response = await client.images.generate({
 
 设计目标：
 
-- 让用户快速录入完整路线事实。
+- 让用户只输入起点和终点，即可生成路线、地图预览、累计爬升和 GPX 路书。
+- 让用户快速确认或修正路线事实。
 - 让 AI 生成结果可预览、可编辑、可保存。
 - 明确展示当前流程状态，避免重复点击导致重复消耗上游 AI 额度。
 - 让封面生成和发布辅助成为显式动作。
@@ -262,7 +416,9 @@ const response = await client.images.generate({
 ├──────────────────────────────────────┬───────────────────────┤
 │ 左侧主区域                             │ 右侧操作侧栏            │
 │                                      │                       │
-│ RouteForm 路线录入表单                 │ CoverPreview 封面预览   │
+│ RoutePlannerForm 起终点输入            │ RouteMap 路线地图       │
+│ PlaceCandidateSelector 候选确认        │ CoverPreview 封面预览   │
+│ RouteForm 路线事实编辑表单              │ GpxDownloadPanel 路书    │
 │                                      │ WorkflowActions 按钮组  │
 │ GeneratedPostEditor 生成内容编辑区      │ Markdown 保存状态       │
 │                                      │ 发布辅助状态            │
@@ -273,8 +429,12 @@ const response = await client.images.generate({
 
 ```text
 顶部标题栏
+RoutePlannerForm
+PlaceCandidateSelector
+RouteMap
 RouteForm
 WorkflowActions
+GpxDownloadPanel
 CoverPreview
 GeneratedPostEditor
 状态提示
@@ -285,13 +445,38 @@ GeneratedPostEditor
 | 组件 | 职责 | 不负责 |
 |---|---|---|
 | `App.vue` | 维护页面状态、串联工作流、处理错误和加载状态 | 具体字段渲染、业务校验细节 |
-| `RouteForm.vue` | 录入路线信息，将 textarea 转为字符串数组 | 调用 API、生成提示词 |
+| `RoutePlannerForm.vue` | 输入起点和终点文本，触发候选地点查询 | 调用高德 SDK、保存 GPX |
+| `PlaceCandidateSelector.vue` | 展示起点和终点候选，记录用户确认的点位 | 自动选择模糊地点 |
+| `RouteMap.vue` | 用高德 JS API 展示规划路线、起终点和路线状态 | 计算 GPX 坐标、调用后端 |
+| `GpxDownloadPanel.vue` | 展示 GPX 生成状态、下载链接和 Strava 导入提示 | 生成路线或编辑文案 |
+| `RouteForm.vue` | 展示并编辑路线事实，将 textarea 转为字符串数组 | 调用 API、生成提示词 |
 | `GeneratedPostEditor.vue` | 展示并编辑 AI 生成结果、选择标题 | 调用上游 AI、保存文件 |
 | `CoverPreview.vue` | 展示封面图、封面加载状态、封面错误 | 生成封面 |
 | `WorkflowActions.vue` | 展示操作按钮和禁用状态 | 保存业务状态 |
 | `publishingApi.ts` | 封装前端 API 请求、统一解析错误 | 页面渲染 |
 
-### 8.4 路线表单设计
+### 8.4 V2.0 路线规划区
+
+路线规划区位于页面顶部，是 V2.0 的主入口。
+
+| 区块 | 控件 | 说明 |
+|---|---|---|
+| 起终点输入 | 两个文本 input | 只输入起点和终点，不要求用户填经纬度 |
+| 候选地点 | 两组单选列表 | 展示高德返回的名称、地址、区县和城市 |
+| 生成路线 | 主按钮 | 用户确认起终点后调用 `/api/generate-route` |
+| 路线地图 | 高德地图容器 | 展示起点、终点和骑行路线 |
+| 路线摘要 | 数字指标 | 展示里程、估算耗时、累计爬升、海拔状态 |
+| GPX 路书 | 下载按钮 | 调用 `/api/generate-gpx` 后下载 GPX |
+
+交互规则：
+
+- 起点或终点文本变化后，原候选选择、规划路线、GPX、文案和封面状态都应标记为过期。
+- 用户必须人工确认起点和终点候选，不能默认使用第一条候选直接规划。
+- 路线生成成功后，系统自动填充 `RouteForm` 中的路线名称、起点、终点、里程、累计爬升和预计耗时。
+- 海拔查询失败时，累计爬升字段保持可编辑，并显示海拔失败详情。
+- GPX 下载按钮只有在路线已生成后启用；海拔失败时需用户确认是否生成无海拔 GPX。
+
+### 8.5 路线表单设计
 
 路线表单分组展示，避免所有字段堆在一起。
 
@@ -317,7 +502,18 @@ GeneratedPostEditor
 - `distanceKm`：允许小数，最小值大于 0。
 - `elevationGainM`：整数，最小值 0。
 
-### 8.5 生成内容编辑区
+V2.0 自动填充字段：
+
+| 字段 | 来源 |
+|---|---|
+| 路线名称 | 起点和终点组合，可编辑 |
+| 起点 | 用户确认的高德候选点 |
+| 终点 | 用户确认的高德候选点 |
+| 总里程 | 高德骑行路线距离 |
+| 累计爬升 | Open-Elevation 采样后计算 |
+| 预计耗时 | 高德骑行路线估算耗时 |
+
+### 8.6 生成内容编辑区
 
 `GeneratedPostEditor` 在 `/api/generate-post` 成功后显示。内容必须允许用户编辑，避免 AI 生成结果未经审核直接进入保存或发布流程。
 
@@ -331,7 +527,7 @@ GeneratedPostEditor
 | 封面文字 | input | `coverTitle` 和 `coverSubtitle` |
 | 图片提示词 | textarea | 可编辑 `imagePrompt`，用于封面背景生成 |
 
-### 8.6 封面预览区
+### 8.7 封面预览区
 
 `CoverPreview` 固定在右侧侧栏顶部，便于用户在生成和编辑过程中持续看到封面状态。
 
@@ -350,10 +546,13 @@ GeneratedPostEditor
 背景：浅灰
 ```
 
-### 8.7 操作按钮和启用规则
+### 8.8 操作按钮和启用规则
 
 | 按钮 | 启用条件 | 调用 API | 成功后 |
 |---|---|---|---|
+| 查询候选地点 | 起点和终点文本非空，且无其他请求进行中 | `/api/search-places` | 展示起终点候选列表 |
+| 生成骑行路线 | 起点和终点候选均已确认，且无其他请求进行中 | `/api/generate-route` | 展示地图路线，填充路线事实 |
+| 生成 GPX 路书 | 已有 `PlannedRoute`，且无其他请求进行中 | `/api/generate-gpx` | 展示 `gpxPath` 和下载链接 |
 | AI 生成 | 路线表单基础校验通过，且无其他请求进行中 | `/api/generate-post` | 填充生成内容，清空旧封面和 Markdown 路径 |
 | 生成封面海报 | 已有 `GeneratedPost`，且无其他请求进行中 | `/api/generate-cover` | 更新 `coverPath` |
 | 保存 Markdown | 已有 `GeneratedPost`，且无其他请求进行中 | `/api/save-markdown` | 展示 `markdownPath` |
@@ -361,14 +560,30 @@ GeneratedPostEditor
 
 所有按钮请求期间必须禁用，避免重复请求造成重复扣费或重复写文件。
 
-### 8.8 页面状态模型
+### 8.9 页面状态模型
 
 前端推荐维护以下状态：
 
 ```ts
-type LoadingAction = "" | "generatePost" | "generateCover" | "saveMarkdown" | "assistPublish";
+type LoadingAction =
+  | ""
+  | "searchPlaces"
+  | "generateRoute"
+  | "generateGpx"
+  | "generatePost"
+  | "generateCover"
+  | "saveMarkdown"
+  | "assistPublish";
 
 type PageState = {
+  placeQuery: { start: string; end: string };
+  startCandidates: PlaceCandidate[];
+  endCandidates: PlaceCandidate[];
+  selectedStart: PlaceCandidate | null;
+  selectedEnd: PlaceCandidate | null;
+  plannedRoute: PlannedRoute | null;
+  gpxPath: string;
+  gpxUrl: string;
   route: RouteFormValue;
   generatedPost: GeneratedPost | null;
   selectedTitle: string;
@@ -387,7 +602,7 @@ type PageState = {
 - API 返回 `detail` 时必须展示。
 - 不在前端展示 API key、authorization、cookie 等敏感信息。
 
-### 8.9 视觉风格
+### 8.10 视觉风格
 
 界面应偏工作台，不做大面积 hero 或营销视觉。
 
@@ -401,7 +616,9 @@ type PageState = {
 - 避免大面积渐变、装饰性图形和纯视觉占位。
 - 文字大小按工作台密度控制，标题不过度放大。
 
-### 8.10 前端 API 错误处理
+封面海报不受工作台 UI 的克制风格限制。封面应参考骑行俱乐部小红书活动海报：全屏实拍感背景、强对比白色大标题、顶部小品牌/路线标识、中部手绘路线线条、底部路线数据。封面不得使用深色信息卡片包裹全部文字。
+
+### 8.11 前端 API 错误处理
 
 `publishingApi.ts` 统一处理响应：
 
@@ -424,6 +641,10 @@ error 不存在：显示“请求失败”
 | API | 方法 | 作用 | 成功响应 | 主要失败 |
 |---|---|---|---|---|
 | `/api/health` | GET | 健康检查 | `{ ok: true }` | 无 |
+| `/api/search-places` | POST | 使用高德搜索起点和终点候选地点 | `{ startCandidates, endCandidates }` | `400` 输入错误，`502` 高德搜索失败 |
+| `/api/generate-route` | POST | 使用高德生成骑行路线，查询海拔并计算累计爬升 | `{ route }` | `400` 输入错误，`502` 高德路线失败 |
+| `/api/generate-gpx` | POST | 生成可导入 Strava 的 GPX 路书 | `{ gpxPath, gpxUrl, stravaCompatible }` | `400` 输入错误，`500` 写入失败 |
+| `/media/routes/:filename` | GET | 下载本地 GPX 路书文件 | GPX 文件 | `404` 文件不存在 |
 | `/api/generate-post` | POST | 根据路线生成小红书文案和封面提示词 | `{ post }` | `400` 输入错误，`502` AI 错误 |
 | `/api/generate-cover` | POST | 使用 DuckCoding Images API 生成封面背景并本地合成海报 | `{ coverPath, coverUrl }` | `400` 输入错误，`502` 图片生成失败，`500` 合成失败 |
 | `/api/save-markdown` | POST | 保存最终内容为 Markdown | `{ markdownPath }` | `400` 输入错误，`500` 写入失败 |
@@ -445,7 +666,143 @@ error 不存在：显示“请求失败”
 }
 ```
 
-### 9.3 POST `/api/generate-post`
+### 9.3 POST `/api/search-places`
+
+请求参数：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---:|---:|---|
+| `startQuery` | string | 是 | 起点搜索文本 |
+| `endQuery` | string | 是 | 终点搜索文本 |
+| `city` | string | 否 | 城市过滤，成都周边默认可为空或 `成都` |
+| `limit` | number | 否 | 每组候选数量，默认 `5`，最大 `10` |
+
+响应：
+
+| 字段 | 类型 | 说明 |
+|---|---:|---|
+| `startCandidates` | PlaceCandidate[] | 起点候选地点 |
+| `endCandidates` | PlaceCandidate[] | 终点候选地点 |
+
+示例：
+
+```json
+{
+  "startCandidates": [
+    {
+      "id": "B001",
+      "name": "成都东站",
+      "address": "成都市成华区",
+      "city": "成都市",
+      "district": "成华区",
+      "location": { "gcj02": { "lng": 104.141, "lat": 30.630 } },
+      "source": "amap"
+    }
+  ],
+  "endCandidates": [
+    {
+      "id": "B002",
+      "name": "青城山",
+      "address": "都江堰市青城山镇",
+      "city": "成都市",
+      "district": "都江堰市",
+      "location": { "gcj02": { "lng": 103.570, "lat": 30.905 } },
+      "source": "amap"
+    }
+  ]
+}
+```
+
+### 9.4 POST `/api/generate-route`
+
+请求参数：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---:|---:|---|
+| `start` | PlaceCandidate | 是 | 用户确认的起点 |
+| `end` | PlaceCandidate | 是 | 用户确认的终点 |
+| `waypoints` | PlaceCandidate[] | 否 | V2.0 暂不启用，默认空数组 |
+| `sampleIntervalM` | number | 否 | 海拔采样间隔，默认 `100` |
+| `elevationBatchSize` | number | 否 | Open-Elevation 每批点数，默认 `100` |
+
+响应：
+
+| 字段 | 类型 | 说明 |
+|---|---:|---|
+| `route` | PlannedRoute | 规划路线、坐标、海拔、路线事实 |
+
+错误处理：
+
+- 高德路线规划失败返回 `502`。
+- Open-Elevation 失败时优先返回 `200`，但 `route.elevation.status` 为 `failed`，并携带 `route.elevation.error`。
+- 如果高德路线为空、距离为 0 或坐标不可用，返回 `502`。
+
+示例响应摘录：
+
+```json
+{
+  "route": {
+    "routeId": "route_20260604_001",
+    "routeName": "成都东站到青城山",
+    "distanceKm": 82.4,
+    "estimatedDurationMin": 318,
+    "polylineGcj02": [{ "lng": 104.141, "lat": 30.63 }],
+    "polylineWgs84": [{ "lng": 104.139, "lat": 30.632 }],
+    "elevation": {
+      "status": "success",
+      "sampleIntervalM": 100,
+      "batchSize": 100,
+      "gainNoiseThresholdM": 3,
+      "points": [{ "distanceM": 0, "lng": 104.139, "lat": 30.632, "ele": 512 }],
+      "elevationGainM": 620
+    },
+    "routeFacts": {
+      "routeName": "成都东站到青城山",
+      "startPoint": "成都东站",
+      "endPoint": "青城山",
+      "distanceKm": 82.4,
+      "elevationGainM": 620,
+      "difficulty": "待确认",
+      "roadType": "待确认",
+      "highlights": ["待补充"],
+      "warnings": ["待补充"],
+      "supplyPoints": ["待补充"]
+    }
+  }
+}
+```
+
+### 9.5 POST `/api/generate-gpx`
+
+请求参数：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---:|---:|---|
+| `route` | PlannedRoute | 是 | 规划路线结果 |
+| `name` | string | 否 | GPX 路书名称，默认使用 `route.routeName` |
+| `allowMissingElevation` | boolean | 否 | 海拔失败时是否允许生成无 `<ele>` 的 GPX，默认 `false` |
+
+响应：
+
+| 字段 | 类型 | 说明 |
+|---|---:|---|
+| `gpxPath` | string | 本地 GPX 文件路径 |
+| `gpxUrl` | string | 前端下载路径 |
+| `stravaCompatible` | boolean | 是否满足 Strava 导入要求 |
+
+GPX 保存目录：
+
+```text
+data/routes/
+```
+
+文件名规则：
+
+```text
+YYYY-MM-DD-HHmm-<route-name-slug>.gpx
+```
+
+### 9.6 POST `/api/generate-post`
 
 请求体：`RouteInput`
 
@@ -472,7 +829,9 @@ error 不存在：显示“请求失败”
 }
 ```
 
-### 9.4 POST `/api/generate-cover`
+V2.0 中 `RouteInput` 通常由 `/api/generate-route` 返回的 `route.routeFacts` 填充，用户确认或编辑后再提交给 `/api/generate-post`。
+
+### 9.7 POST `/api/generate-cover`
 
 请求参数：
 
@@ -499,7 +858,7 @@ error 不存在：显示“请求失败”
 }
 ```
 
-### 9.5 POST `/api/save-markdown`
+### 9.8 POST `/api/save-markdown`
 
 请求参数：
 
@@ -509,6 +868,7 @@ error 不存在：显示“请求失败”
 | `post` | GeneratedPost | 是 | 生成并编辑后的内容 |
 | `selectedTitle` | string | 是 | 用户选定标题 |
 | `coverPath` | string | 否 | 已生成封面路径 |
+| `gpxPath` | string | 否 | V2.0 生成的 GPX 路书路径 |
 
 响应：
 
@@ -528,7 +888,19 @@ data/posts/
 YYYY-MM-DD-HHmm-<route-name-slug>.md
 ```
 
-### 9.6 POST `/api/assist-publish`
+V2.0 Markdown 内容应追加 GPX 路书路径，便于归档和复查。
+
+### 9.9 GET `/media/routes/:filename`
+
+用途：下载 `data/routes/` 下的 GPX 文件，用于导入 Strava。
+
+约束：
+
+- `filename` 只能匹配服务端生成的 `.gpx` 文件名，禁止路径穿越。
+- 响应头设置 `Content-Type: application/gpx+xml`。
+- 文件不存在返回统一错误格式，状态码 `404`。
+
+### 9.10 POST `/api/assist-publish`
 
 请求参数：
 
@@ -570,7 +942,8 @@ type ApiError = {
 | 状态码 | 场景 |
 |---:|---|
 | `400` | 本地输入校验失败 |
-| `502` | DuckCoding 等上游服务失败 |
+| `404` | 本地生成文件不存在 |
+| `502` | 高德地图、Open-Elevation、DuckCoding 等上游服务失败 |
 | `500` | 文件系统、图片合成、Playwright 等本地执行失败 |
 
 示例：
@@ -584,7 +957,67 @@ type ApiError = {
 
 ## 11. 用例边界
 
-### 11.1 GeneratePostUseCase
+### 11.1 SearchPlacesUseCase
+
+输入：`startQuery`、`endQuery`、`city`、`limit`
+
+输出：`startCandidates`、`endCandidates`
+
+职责：
+
+- 校验起点和终点搜索文本。
+- 调用高德地点搜索服务。
+- 将高德 POI 响应转换为 `PlaceCandidate`。
+- 过滤无坐标候选，并限制候选数量。
+
+不负责：
+
+- 自动选择候选点。
+- 规划骑行路线。
+
+### 11.2 GenerateRouteUseCase
+
+输入：`start`、`end`、`waypoints`、采样参数
+
+输出：`PlannedRoute`
+
+职责：
+
+- 校验用户确认的起终点。
+- 调用高德骑行路线规划。
+- 保留 GCJ-02 路线用于高德地图展示。
+- 将路线坐标转换为 WGS84。
+- 按 100m 默认间隔采样路线。
+- 调用 Open-Elevation 批量查询海拔。
+- 计算累计爬升，并生成 `routeFacts`。
+
+不负责：
+
+- 生成小红书文案。
+- 写入 GPX 文件。
+- 在前端地图中直接绘制路线。
+
+### 11.3 GenerateGpxUseCase
+
+输入：`PlannedRoute`、`name`、`allowMissingElevation`
+
+输出：`gpxPath`、`gpxUrl`、`stravaCompatible`
+
+职责：
+
+- 校验路线坐标为 WGS84。
+- 将路线点序列化为 GPX 1.1。
+- 海拔成功时为每个可用点写入 `<ele>`。
+- 保存到 `data/routes/`。
+- 返回可下载 URL。
+
+不负责：
+
+- 重新规划路线。
+- 调用 Open-Elevation。
+- 上传到 Strava。
+
+### 11.4 GeneratePostUseCase
 
 输入：`RouteInput`
 
@@ -603,7 +1036,7 @@ type ApiError = {
 - Markdown 保存。
 - 封面图片生成。
 
-### 11.2 GenerateCoverUseCase
+### 11.5 GenerateCoverUseCase
 
 输入：`route`、`imagePrompt`、`coverTitle`、`coverSubtitle`
 
@@ -621,19 +1054,20 @@ type ApiError = {
 - 保存 Markdown。
 - 发布到小红书。
 
-### 11.3 SaveMarkdownUseCase
+### 11.6 SaveMarkdownUseCase
 
-输入：`route`、`post`、`selectedTitle`、`coverPath`
+输入：`route`、`post`、`selectedTitle`、`coverPath`、`gpxPath`
 
 输出：`markdownPath`
 
 职责：
 
 - 序列化最终内容。
+- V2.0 有 GPX 时记录 GPX 路书路径。
 - 保存到 `data/posts/`。
 - 返回本地文件路径。
 
-### 11.4 AssistPublishUseCase
+### 11.7 AssistPublishUseCase
 
 输入：`title`、`body`、`hashtags`、`coverPath`
 
@@ -656,15 +1090,17 @@ type ApiError = {
 
 | 层级 | 测试重点 |
 |---|---|
-| domain | Zod schema、提示词是否保留路线事实、AI 输出 schema |
-| useCases | 用例编排、错误分支、依赖替换 |
-| routes | HTTP 状态码、请求校验、响应格式 |
-| services | DuckCoding OpenAI-compatible 请求包装、Sharp 输出、Markdown 文件、Playwright 行为边界 |
-| client | 表单转换、按钮状态、错误展示、生成结果编辑 |
+| domain | Zod schema、坐标模型、路线事实转换、提示词是否保留路线事实、AI 输出 schema |
+| useCases | 地点搜索、路线生成、海拔失败降级、GPX 生成、AI 生成等用例编排 |
+| routes | HTTP 状态码、请求校验、响应格式、GPX 下载路径安全 |
+| services | 高德请求包装、坐标转换、路线采样、Open-Elevation 批量查询、累计爬升、GPX 写入、DuckCoding、Sharp、Markdown、Playwright |
+| client | 候选地点确认、地图状态、GPX 下载状态、表单转换、按钮状态、错误展示、生成结果编辑 |
 
 测试原则：
 
 - 领域逻辑和 API 行为先写测试。
+- 坐标转换、每 100m 采样、累计爬升阈值过滤和 GPX XML 输出必须有确定性单元测试。
+- 高德地图和 Open-Elevation 在单元测试中使用假服务，不真实调用。
 - DuckCoding 等上游 AI 服务不在单元测试中真实调用。
 - Playwright 发布辅助使用假的 browser/page 抽象测试。
 - 图片合成服务可以使用小尺寸测试图验证输出文件存在和格式正确。
@@ -711,13 +1147,13 @@ type ApiError = {
 | `requestBody` | object | 否 | 请求体，经过脱敏和长度限制 |
 | `responseBody` | object | 否 | 响应体摘要，错误时必须记录 |
 
-### 13.4 AI 调用日志字段
+### 13.4 上游调用日志字段
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---:|---:|---|
-| `provider` | string | 是 | `duckcoding` |
-| `operation` | string | 是 | `chat.completions.create` 或 `images.generate` |
-| `model` | string | 是 | 使用的模型名 |
+| `provider` | string | 是 | `amap`、`open-elevation` 或 `duckcoding` |
+| `operation` | string | 是 | `place.search`、`cycling.route`、`elevation.batch`、`chat.completions.create` 或 `images.generate` |
+| `model` | string | 否 | AI 模型名，仅 DuckCoding 需要 |
 | `status` | number | 否 | 上游 HTTP 状态码 |
 | `requestHeaders` | object | 否 | 发送给上游接口的请求头，经过脱敏 |
 | `requestBody` | object | 否 | 发送给上游接口的请求体，经过脱敏和长度限制 |
@@ -730,6 +1166,17 @@ type ApiError = {
 | `api.request.started` | `info` | 收到前端 API 请求 |
 | `api.request.completed` | `info` | API 请求成功或业务错误返回 |
 | `api.request.failed` | `error` | API 请求出现未处理异常 |
+| `route.place.search.started` | `info` | 开始查询高德地点候选 |
+| `route.place.search.completed` | `info` | 高德地点候选查询成功 |
+| `route.place.search.failed` | `error` | 高德地点候选查询失败 |
+| `route.plan.started` | `info` | 开始高德骑行路线规划 |
+| `route.plan.completed` | `info` | 高德骑行路线规划成功 |
+| `route.plan.failed` | `error` | 高德骑行路线规划失败 |
+| `elevation.lookup.started` | `info` | 开始 Open-Elevation 批量查询 |
+| `elevation.lookup.completed` | `info` | Open-Elevation 查询成功或部分成功 |
+| `elevation.lookup.failed` | `warn` | Open-Elevation 查询失败，路线可降级返回 |
+| `gpx.save.completed` | `info` | GPX 保存成功 |
+| `gpx.save.failed` | `error` | GPX 保存失败 |
 | `openai.request.started` | `info` | 准备调用 DuckCoding OpenAI-compatible 上游 |
 | `openai.request.completed` | `info` | DuckCoding OpenAI-compatible 上游调用成功 |
 | `openai.request.failed` | `error` | DuckCoding OpenAI-compatible 上游调用失败 |
@@ -745,6 +1192,8 @@ type ApiError = {
 
 必须脱敏：
 
+- `AMAP_API_KEY`
+- `AMAP_JS_API_KEY`
 - `DUCKCODING_TEXT_API_KEY`
 - `DUCKCODING_IMAGE_API_KEY`
 - HTTP headers 中的 `authorization`
@@ -780,6 +1229,8 @@ type ApiError = {
 
 - API 请求体默认记录完整 JSON，但必须应用 8 KB 限制。
 - DuckCoding 请求体可以记录 `model`、`messages`、`prompt`、`size`、`n` 等调试必要字段。
+- 高德请求体或 query 可以记录起终点名称和坐标，但必须脱敏 `key`。
+- Open-Elevation 请求体可以记录批次大小、首尾坐标和采样数量，debug 模式可记录截断后的点列表。
 - DuckCoding 图片响应中的 `b64_json` 禁止记录。
 - 文件上传、Buffer、ArrayBuffer、Blob、FormData 只记录类型、字段名和大小，不记录二进制内容。
 - 任何包含 `apiKey`、`password`、`token`、`secret`、`code` 的字段名必须脱敏。
@@ -815,6 +1266,12 @@ API 错误返回：
 | 变量 | 必填 | 说明 |
 |---|---:|---|
 | `PORT` | 否 | 后端端口，默认 `8787` |
+| `AMAP_API_KEY` | 是 | 高德 Web Service API key，用于地点搜索和骑行路线规划 |
+| `AMAP_JS_API_KEY` | 是 | 高德 JS API key，用于前端地图渲染 |
+| `OPEN_ELEVATION_BASE_URL` | 否 | Open-Elevation 地址，默认公共 API |
+| `ELEVATION_SAMPLE_INTERVAL_M` | 否 | 海拔采样间隔，默认 `100` |
+| `ELEVATION_BATCH_SIZE` | 否 | Open-Elevation 批量查询点数，默认 `100` |
+| `ELEVATION_GAIN_NOISE_THRESHOLD_M` | 否 | 累计爬升噪声过滤阈值，默认 `3` |
 | `DUCKCODING_BASE_URL` | 否 | DuckCoding API 地址，默认 `https://www.duckcoding.ai/v1` |
 | `DUCKCODING_TEXT_API_KEY` | 是 | DuckCoding Chat Completions API key，用于 `/api/generate-post` |
 | `DUCKCODING_TEXT_MODEL` | 否 | 文案生成模型，默认 `gpt-5.5` |
@@ -828,6 +1285,10 @@ API 错误返回：
 
 ## 15. 关键风险
 
+- 高德路线使用 GCJ-02，GPX 和 Strava 需要 WGS84，坐标转换错误会导致路书偏移。
+- Open-Elevation 公共 API 可用性和限流不可控，必须支持失败降级和人工填写累计爬升。
+- 每 100m 采样会产生较多点，长路线需要批量查询和请求体长度控制。
+- 高德骑行路线和实际骑行可通行性不完全一致，最终路线必须由用户人工确认。
 - DuckCoding 额度、hard limit 或模型权限限制会导致文案或封面生成失败。
 - 图片生成成本较高，必须由用户显式点击触发。
 - 小红书页面结构变化可能导致 Playwright 选择器失效。

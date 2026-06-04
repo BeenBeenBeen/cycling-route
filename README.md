@@ -1,6 +1,6 @@
 # cycling-route
 
-本项目是本地运行的成都周边骑行路线发布工具，用于辅助生成小红书发布素材。应用提供路线录入、AI 文案生成、AI 封面背景生成、本地封面合成、Markdown 保存和小红书辅助发布。
+本项目是本地运行的成都周边骑行路线发布工具，用于辅助生成小红书发布素材。应用提供起终点地点搜索、骑行路线生成、累计爬升计算、GPX 路书下载、路线录入、AI 文案生成、AI 封面背景生成、本地封面合成、Markdown 保存和小红书辅助发布。
 
 系统不会自动点击小红书最终发布按钮，不保存小红书账号密码，不绕过登录、验证码或平台风控。
 
@@ -29,6 +29,12 @@ DUCKCODING_TEXT_MODEL=gpt-5.5
 DUCKCODING_IMAGE_API_KEY=
 DUCKCODING_IMAGE_MODEL=gpt-image-1
 DUCKCODING_IMAGE_SIZE=1024x1536
+AMAP_API_KEY=
+AMAP_JS_API_KEY=
+OPEN_ELEVATION_BASE_URL=https://api.open-elevation.com/api/v1/lookup
+ELEVATION_SAMPLE_INTERVAL_M=100
+ELEVATION_BATCH_SIZE=100
+ELEVATION_GAIN_NOISE_THRESHOLD_M=3
 HTTP_PROXY=
 HTTPS_PROXY=
 ALL_PROXY=
@@ -100,6 +106,10 @@ npm run build
 | API | 方法 | 作用 |
 |---|---:|---|
 | `/api/health` | GET | 健康检查 |
+| `/api/search-places` | POST | 使用高德地图搜索起终点候选地点 |
+| `/api/generate-route` | POST | 使用高德生成骑行路线，并通过 Open-Elevation 计算累计爬升 |
+| `/api/generate-gpx` | POST | 生成可导入 Strava 的 GPX 路书 |
+| `/media/routes/:filename` | GET | 下载本地 GPX 路书 |
 | `/api/generate-post` | POST | 根据路线生成小红书文案 |
 | `/api/generate-cover` | POST | 生成封面背景并本地合成海报 |
 | `/api/save-markdown` | POST | 保存最终内容为 Markdown |
@@ -110,8 +120,22 @@ npm run build
 ```text
 data/images/
 data/posts/
+data/routes/
 data/browser-profile/
 ```
+
+## V2.0 路线和 GPX
+
+V2.0 推荐流程：
+
+1. 输入起点和终点。
+2. 从高德候选地点中人工确认起点和终点。
+3. 生成骑行路线。
+4. 系统按路线采样并调用 Open-Elevation 计算累计爬升。
+5. 生成 GPX 路书并下载，可导入 Strava。
+6. 继续生成小红书文案、封面和 Markdown。
+
+如果 Open-Elevation 不可用，路线仍可返回，但海拔状态会标记失败，需要人工确认累计爬升。
 
 ## 上游额度错误
 
