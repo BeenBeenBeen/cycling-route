@@ -126,3 +126,7 @@ Billing hard limit has been reached
 ## 手动验证
 
 见 [docs/manual-test.md](docs/manual-test.md)。
+
+## V2.0 需求
+
+见 [docs/requirements-v2.md](docs/requirements-v2.md)。
