@@ -27,6 +27,22 @@ describe("jsonLogger", () => {
     });
   });
 
+  it("keeps boolean key configuration flags visible", () => {
+    const output: string[] = [];
+    const logger = createJsonLogger({ sink: (line) => output.push(line), level: "info" });
+
+    logger.info("server.config.loaded", {
+      hasAmapApiKey: true,
+      hasDuckcodingTextApiKey: false,
+      authorization: "Bearer secret",
+    });
+
+    const line = JSON.parse(output[0]);
+    expect(line.hasAmapApiKey).toBe(true);
+    expect(line.hasDuckcodingTextApiKey).toBe(false);
+    expect(line.authorization).toBe("[redacted]");
+  });
+
   it("omits base64 image fields", () => {
     expect(
       redactValue({

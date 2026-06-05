@@ -50,6 +50,32 @@ describe("createAmapPlaceSearch", () => {
     expect(JSON.stringify(logger.error.mock.calls)).not.toContain("amap-secret");
   });
 
+  it("derives a stable candidate id when amap omits the POI id", async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(
+      Response.json({
+        status: "1",
+        pois: [
+          {
+            name: "成都东站",
+            address: "邛崃山路333号",
+            cityname: "成都市",
+            adname: "成华区",
+            location: "104.141,30.63",
+          },
+        ],
+      }),
+    );
+
+    const search = createAmapPlaceSearch({ apiKey: "amap-secret", fetch });
+    const [candidate] = await search({ query: "成都东站", city: "成都", limit: 3 });
+
+    expect(candidate).toMatchObject({
+      id: "amap_成都东站_104.141_30.63",
+      name: "成都东站",
+      location: { gcj02: { lng: 104.141, lat: 30.63 } },
+    });
+  });
+
   it("throws readable errors for missing config and upstream failures", async () => {
     await expect(
       createAmapPlaceSearch({ fetch: vi.fn<typeof globalThis.fetch>() })({

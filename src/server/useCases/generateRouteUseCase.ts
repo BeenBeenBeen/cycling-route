@@ -22,7 +22,10 @@ export type PlanCyclingRoute = (input: {
   polylineGcj02: Coordinate[];
 }>;
 
-export type LookupElevation = (points: RouteSample[]) => Promise<ElevationPoint[]>;
+export type LookupElevation = (
+  points: RouteSample[],
+  options?: { batchSize?: number },
+) => Promise<ElevationPoint[]>;
 
 type GenerateRouteUseCaseDeps = {
   planCyclingRoute: PlanCyclingRoute;
@@ -105,7 +108,7 @@ export const createGenerateRouteUseCase =
     let elevationError: string | undefined;
 
     try {
-      elevationPoints = await lookupElevation(samples);
+      elevationPoints = await lookupElevation(samples, { batchSize });
       elevationGainM = calculateElevationGainM(elevationPoints, gainNoiseThresholdM);
     } catch (error) {
       elevationStatus = "failed";

@@ -14,6 +14,10 @@ type OpenElevationProviderDeps = {
   logger?: Pick<JsonLogger, "info" | "error">;
 };
 
+type OpenElevationLookupOptions = {
+  batchSize?: number;
+};
+
 type OpenElevationResult = {
   elevation?: unknown;
 };
@@ -65,17 +69,21 @@ export const createOpenElevationProvider =
     fetch: fetchImpl = globalThis.fetch,
     logger,
   }: OpenElevationProviderDeps) =>
-  async (points: SampledPoint[]): Promise<ElevationPoint[]> => {
-    validateConfig(baseUrl, batchSize);
+  async (
+    points: SampledPoint[],
+    options: OpenElevationLookupOptions = {},
+  ): Promise<ElevationPoint[]> => {
+    const effectiveBatchSize = options.batchSize ?? batchSize;
+    validateConfig(baseUrl, effectiveBatchSize);
     const output: ElevationPoint[] = [];
 
     logger?.info("elevation.lookup.started", {
       pointCount: points.length,
-      batchSize,
+      batchSize: effectiveBatchSize,
     });
 
-    for (let start = 0; start < points.length; start += batchSize) {
-      const batch = points.slice(start, start + batchSize);
+    for (let start = 0; start < points.length; start += effectiveBatchSize) {
+      const batch = points.slice(start, start + effectiveBatchSize);
       const response = await fetchImpl(baseUrl, {
         method: "POST",
         headers: { "content-type": "application/json" },

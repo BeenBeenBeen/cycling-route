@@ -51,16 +51,27 @@ const parseLocation = (location: unknown) => {
 const optionalString = (value: unknown) =>
   typeof value === "string" && value.trim() ? value : undefined;
 
-const toPlaceCandidate = (poi: AmapPoi): PlaceCandidate =>
-  parsePlaceCandidate({
-    id: optionalString(poi.id),
+const derivePoiId = (poi: AmapPoi, location: { lng: number; lat: number }) => {
+  const name = optionalString(poi.name);
+  return (
+    optionalString(poi.id) ??
+    `amap_${name ?? "unknown"}_${location.lng}_${location.lat}`
+  );
+};
+
+const toPlaceCandidate = (poi: AmapPoi): PlaceCandidate => {
+  const location = parseLocation(poi.location);
+
+  return parsePlaceCandidate({
+    id: derivePoiId(poi, location),
     name: optionalString(poi.name),
     address: optionalString(poi.address),
     city: optionalString(poi.cityname),
     district: optionalString(poi.adname),
-    location: { gcj02: parseLocation(poi.location) },
+    location: { gcj02: location },
     source: "amap",
   });
+};
 
 const readJson = async (response: Response): Promise<AmapPlaceSearchResponse> => {
   try {

@@ -38,6 +38,34 @@ describe("createOpenElevationProvider", () => {
     ]);
   });
 
+  it("uses a request batch size override for one lookup", async () => {
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValueOnce(Response.json({ results: [{ elevation: 501 }] }))
+      .mockResolvedValueOnce(Response.json({ results: [{ elevation: 508 }] }))
+      .mockResolvedValueOnce(Response.json({ results: [{ elevation: 512 }] }));
+
+    const provider = createOpenElevationProvider({
+      baseUrl: "https://elevation.example/api/v1/lookup",
+      batchSize: 50,
+      fetch,
+    });
+
+    await provider(
+      [
+        { distanceM: 0, lng: 104.1, lat: 30.6 },
+        { distanceM: 100, lng: 104.2, lat: 30.7 },
+        { distanceM: 200, lng: 104.3, lat: 30.8 },
+      ],
+      { batchSize: 1 },
+    );
+
+    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(JSON.parse(String(fetch.mock.calls[0][1]?.body)).locations).toHaveLength(1);
+    expect(JSON.parse(String(fetch.mock.calls[1][1]?.body)).locations).toHaveLength(1);
+    expect(JSON.parse(String(fetch.mock.calls[2][1]?.body)).locations).toHaveLength(1);
+  });
+
   it("does not log Authorization-like fields", async () => {
     const logger = { info: vi.fn(), error: vi.fn() };
     const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(

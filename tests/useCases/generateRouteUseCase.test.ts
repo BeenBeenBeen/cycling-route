@@ -108,6 +108,7 @@ describe("createGenerateRouteUseCase", () => {
 
     expect(route.elevation.sampleIntervalM).toBe(250);
     expect(route.elevation.batchSize).toBe(12);
+    expect(lookupElevation).toHaveBeenCalledWith(expect.any(Array), { batchSize: 12 });
   });
 
   it("returns the route with failed elevation when lookup fails", async () => {

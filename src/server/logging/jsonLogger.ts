@@ -66,7 +66,7 @@ export const redactValue = (
         Object.entries(item).map(([key, child]) => {
           const normalizedKey = normalizeKey(key);
 
-          if (sensitivePattern.test(normalizedKey)) {
+          if (sensitivePattern.test(normalizedKey) && typeof child !== "boolean") {
             return [key, "[redacted]"];
           }
 
