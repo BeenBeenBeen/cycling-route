@@ -7,6 +7,7 @@
 - V2.0 支持用户只输入起点和终点，并从高德地图候选地点中人工确认。
 - V2.0 前端拆成“路线规划”和“小红书发布”两个割裂界面，通过顶部导航进入。
 - 路线规划界面采用地图优先布局，参考 Strava 路线创建页，地图是第一视觉和主要操作区。
+- V2.0 前端 UI 统一使用 Naive UI 组件库，页面可见 UI 元素不得继续使用裸 `button`、`input`、`textarea`、`select`、`card`、`alert` 等自定义组件替代。
 - 小红书发布界面只负责路线事实确认、文案、封面、Markdown 和辅助发布。
 - V2.0 使用高德地图生成骑行路线，并在前端地图中渲染路线。
 - V2.0 按路线每 100m 采样，通过 Open-Elevation 批量查询海拔，计算累计爬升。
@@ -23,6 +24,8 @@
 
 - 前端只负责表单、预览、编辑、状态展示和 API 调用，不承载业务规则。
 - 前端页面按 bounded context 拆分：`RoutePlannerView` 负责路线规划，`PublisherView` 负责小红书发布；跨界面只通过 `RoutePublishDraft` 数据包交接。
+- 前端 UI 组件统一采用 Naive UI。所有页面元素优先使用 `n-layout`、`n-menu`、`n-card`、`n-form`、`n-input`、`n-input-number`、`n-button`、`n-grid`、`n-alert`、`n-spin`、`n-image`、`n-tag`、`n-space`、`n-statistic` 等 Naive UI 组件表达。
+- 自定义 Vue 组件只封装业务语义和编排，不重新实现基础 UI 控件。允许例外仅限高德地图挂载容器、封面图片实际 `<img>` 渲染、GPX 下载锚点在 `n-button` 的 `tag="a"` 场景中使用。
 - 页面导航优先使用成熟路由库 `vue-router`，避免手写 URL 状态管理。
 - 路线发布草稿使用单用途 `routePublishDraftStore` 封装 `localStorage`，不把持久化逻辑散落在 Vue 组件中。
 - 领域模型使用 Zod 统一校验，包括路线输入、生成文案、封面请求和发布请求。
@@ -37,19 +40,20 @@
 
 ```text
 Vue Client
-  AppNav
+  Naive UI Provider
+  AppNav (NMenu)
   Router
     RoutePlannerView
-      RoutePlannerForm
-      PlaceCandidateSelector
-      RouteMap
-      RouteSummaryBar
-      GpxDownloadPanel
+      RoutePlannerForm (NForm, NInput, NButton)
+      PlaceCandidateSelector (NList, NButton, NTag)
+      RouteMap (AMap canvas + Naive UI overlay)
+      RouteSummaryBar (NGrid, NStatistic, NTag)
+      GpxDownloadPanel (NCard, NButton)
     PublisherView
-      RouteForm
-      GeneratedPostEditor
-      CoverPreview
-      WorkflowActions
+      RouteForm (NForm, NInput, NInputNumber)
+      GeneratedPostEditor (NCard, NRadioGroup, NInput)
+      CoverPreview (NCard, NImage, NSpin)
+      WorkflowActions (NButton, NSpace)
   routePublishDraftStore
         |
         | HTTP JSON
@@ -90,6 +94,7 @@ src/
   client/
     App.vue
     router.ts
+    naiveTheme.ts
     stores/
       routePublishDraftStore.ts
     api/
@@ -490,6 +495,45 @@ AppNav
   保存和辅助发布
 ```
 
+### 8.2.1 Naive UI 组件库约束
+
+前端页面元素必须统一迁移到 Naive UI，避免继续维护一套自定义表单、按钮、卡片、提示和布局样式。迁移目标不是只安装组件库，而是让所有可见页面控件都由 Naive UI 提供。
+
+依赖和入口：
+
+- 新增依赖：`naive-ui`。
+- `main.ts` 或 `App.vue` 根部挂载 `n-config-provider`、`n-message-provider`、`n-dialog-provider` 和 `n-loading-bar-provider`。
+- 项目新增 `src/client/naiveTheme.ts`，集中定义主题覆盖、主色、圆角、字体、按钮和卡片样式。
+- `App.vue` 只保留全局页面骨架和必要地图尺寸样式，不再定义通用 `button`、`input`、`textarea`、`card` 样式。
+
+组件替换规则：
+
+| 当前语义 | Naive UI 组件 |
+|---|---|
+| 页面骨架 | `n-layout`、`n-layout-header`、`n-layout-content` |
+| 顶部导航 | `n-menu`，通过 `vue-router` 驱动选中项 |
+| 表单 | `n-form`、`n-form-item`、`n-input`、`n-input-number`、`n-dynamic-tags` |
+| 操作按钮 | `n-button`、`n-button-group`、`n-space` |
+| 信息卡片 | `n-card`、`n-thing`、`n-list`、`n-list-item` |
+| 错误提示 | `n-alert`，详情用 `n-collapse` 或 `n-code` |
+| 加载状态 | `n-spin`、`n-skeleton`、`n-loading-bar` |
+| 路线摘要 | `n-grid`、`n-gi`、`n-statistic`、`n-tag` |
+| 标题选择 | `n-radio-group`、`n-radio` |
+| 封面图片 | `n-image`，外层使用 `n-card` |
+| GPX 下载 | `n-button tag="a"` |
+
+允许例外：
+
+- 高德地图必须保留一个真实 DOM 容器给 JS API 挂载，但容器外层状态、错误、浮层和统计信息仍使用 Naive UI。
+- 路线 polyline、marker、地图控件由高德 JS API 管理，不用 Naive UI 替代。
+- 语义化结构元素如页面根 `section` 可以保留，但不得承担按钮、输入框、卡片、提示条等视觉组件职责。
+
+禁止规则：
+
+- 不再新增裸 `button`、`input`、`textarea`、`select` 作为页面控件。
+- 不再新增自定义 `.actions-panel`、`.form-section`、`.editor-panel`、`.cover-panel` 等替代 Naive UI 卡片和布局的样式。
+- 不在业务组件里直接堆大量 CSS 做组件库已有能力。
+
 ### 8.3 组件职责
 
 | 组件 | 职责 | 不负责 |
@@ -511,6 +555,8 @@ AppNav
 | `WorkflowActions.vue` | 展示操作按钮和禁用状态 | 保存业务状态 |
 | `publishingApi.ts` | 封装前端 API 请求、统一解析错误 | 页面渲染 |
 
+Naive UI 迁移后，以上组件仍保留业务语义命名，但内部必须使用 Naive UI 基础组件表达页面元素。组件职责边界不因为 UI 库迁移而改变：API 调用仍在视图层编排，表单组件只负责输入和输出结构化值，业务规则仍留在服务端领域模型和用例中。
+
 ### 8.4 V2.0 路线规划区
 
 路线规划区位于 `/route-planner`，采用地图优先布局。该界面不展示小红书文案编辑器、不展示封面预览，也不提供 Markdown 或辅助发布按钮。
@@ -518,9 +564,9 @@ AppNav
 | 区块 | 控件 | 说明 |
 |---|---|---|
 | 地图主区域 | 高德地图容器 | 全屏或近全屏展示成都周边地图，生成后绘制骑行路线 |
-| 左侧浮层路线面板 | 起点、终点、城市、候选确认 | 表单浮在地图上，便于边看地图边规划 |
-| 底部路线摘要条 | 距离、累计爬升、预计耗时、GPX 状态 | 参考 Strava 的路线指标呈现方式 |
-| 右上角操作区 | 重新规划、生成 GPX、发送到小红书发布 | 所有动作都必须显式触发 |
+| 左侧浮层路线面板 | `n-card` + `n-form` + `n-input` + `n-list` | 表单浮在地图上，便于边看地图边规划 |
+| 底部路线摘要条 | `n-card` + `n-grid` + `n-statistic` | 参考 Strava 的路线指标呈现方式 |
+| 右上角操作区 | `n-card` + `n-space` + `n-button` | 所有动作都必须显式触发 |
 
 交互规则：
 
@@ -576,8 +622,8 @@ AppNav
 
 数字字段使用 number input：
 
-- `distanceKm`：允许小数，最小值大于 0。
-- `elevationGainM`：整数，最小值 0。
+- `distanceKm`：使用 `n-input-number`，允许小数，最小值大于 0。
+- `elevationGainM`：使用 `n-input-number`，整数，最小值 0。
 
 V2.0 自动填充字段：
 
@@ -731,6 +777,27 @@ detail 存在：显示 error + detail
 detail 不存在：显示 error
 error 不存在：显示“请求失败”
 ```
+
+### 8.13 Naive UI 迁移顺序
+
+Naive UI 迁移必须按小步提交执行，避免一次性替换所有页面导致路线规划和发布流程回归。
+
+建议顺序：
+
+1. 安装 `naive-ui`，接入根级 provider 和 `naiveTheme.ts`，保留现有页面行为不变。
+2. 迁移 `App.vue` 和 `AppNav.vue`：使用 `n-layout`、`n-layout-header`、`n-layout-content`、`n-menu`，移除通用裸按钮和输入框样式。
+3. 迁移路线规划页：`RoutePlannerForm`、`PlaceCandidateSelector`、`RouteSummaryBar`、`GpxDownloadPanel`、`WorkflowActions` 使用 Naive UI；`RouteMap` 仅保留高德地图挂载容器作为例外。
+4. 迁移小红书发布页：`RouteForm`、`GeneratedPostEditor`、`CoverPreview` 使用 Naive UI 表单、卡片、图片、单选和标签组件。
+5. 清理遗留 CSS：删除用于模拟组件库的 `.form-section`、`.actions-panel`、`.editor-panel`、`.cover-panel` 等样式，仅保留页面布局、地图尺寸和少量业务特定样式。
+6. 补充或更新测试：测试仍断言业务行为和数据流，不依赖 Naive UI 内部 DOM 结构；必要时使用稳定 `data-testid` 包裹业务组件。
+
+验收标准：
+
+- `npm test` 和 `npm run build` 通过。
+- 页面可见表单、按钮、卡片、提示、列表、统计、图片预览均由 Naive UI 组件渲染。
+- 地图默认定位成都市，路线生成后仍能绘制高德二维路线。
+- 发布页仍能读取 `RoutePublishDraft`，生成文案、封面、Markdown 和辅助发布。
+- 无新增裸页面控件作为交互元素。
 
 ## 9. API 定义
 
