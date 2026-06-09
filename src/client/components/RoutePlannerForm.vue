@@ -45,7 +45,7 @@ const onSearch = () => {
           </NFormItem>
         </NGi>
       </NGrid>
-      <NButton data-testid="search-places" type="primary" attr-type="submit" block @click="onSearch">
+      <NButton data-testid="search-places" type="primary" attr-type="submit" block>
         查询候选地点
       </NButton>
     </NForm>

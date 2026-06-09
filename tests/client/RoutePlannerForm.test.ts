@@ -10,9 +10,10 @@ describe("RoutePlannerForm", () => {
     await wrapper.get('[data-testid="start-query"]').setValue("犀浦");
     await wrapper.get('[data-testid="end-query"]').setValue("青城山");
     await wrapper.get('[data-testid="search-places"]').trigger("click");
+    await wrapper.get("form").trigger("submit");
 
-    expect(wrapper.emitted("search")?.[0]).toEqual([
-      { startQuery: "犀浦", endQuery: "青城山" },
+    expect(wrapper.emitted("search")).toEqual([
+      [{ startQuery: "犀浦", endQuery: "青城山" }],
     ]);
   });
 

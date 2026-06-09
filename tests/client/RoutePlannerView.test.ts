@@ -120,7 +120,7 @@ describe("RoutePlannerView", () => {
 
     await wrapper.get('[data-testid="start-query"]').setValue("犀浦");
     await wrapper.get('[data-testid="end-query"]').setValue("青城山");
-    await wrapper.get('[data-testid="search-places"]').trigger("click");
+    await wrapper.get("form").trigger("submit");
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     await vi.waitFor(() =>
       expect(wrapper.find('[data-testid="start-candidate-B001"]').exists()).toBe(true),
@@ -160,7 +160,7 @@ describe("RoutePlannerView", () => {
 
     await wrapper.get('[data-testid="start-query"]').setValue("犀浦");
     await wrapper.get('[data-testid="end-query"]').setValue("青城山");
-    await wrapper.get('[data-testid="search-places"]').trigger("click");
+    await wrapper.get("form").trigger("submit");
 
     await vi.waitFor(() => {
       expect(document.body.textContent).toContain("地点搜索失败");
@@ -188,7 +188,7 @@ describe("RoutePlannerView", () => {
     const { wrapper } = await mountView();
     await wrapper.get('[data-testid="start-query"]').setValue("犀浦");
     await wrapper.get('[data-testid="end-query"]').setValue("青城山");
-    await wrapper.get('[data-testid="search-places"]').trigger("click");
+    await wrapper.get("form").trigger("submit");
     await vi.waitFor(() =>
       expect(wrapper.find('[data-testid="start-candidate-B001"]').exists()).toBe(true),
     );
