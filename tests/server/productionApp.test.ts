@@ -3,6 +3,7 @@ import { createProductionApp } from "../../src/server/productionApp";
 
 const config = {
   port: 8788,
+  appMode: "deployment" as const,
   logLevel: "error" as const,
   duckcodingTextApiKey: "duck-text-key",
   duckcodingImageApiKey: "duck-image-key",

@@ -1,10 +1,12 @@
 import { createApp } from "./app";
 import { loadConfig } from "./config";
 import { createProductionDependencies } from "./dependencies";
+import { resolveListenHost } from "../config/ports";
 
 const config = loadConfig();
 const app = createApp(createProductionDependencies(config));
+const listenHost = resolveListenHost(config.appMode);
 
-app.listen(config.port, "127.0.0.1", () => {
-  console.log(`API listening on http://127.0.0.1:${config.port}`);
+app.listen(config.port, listenHost, () => {
+  console.log(`API listening on http://${listenHost}:${config.port}`);
 });

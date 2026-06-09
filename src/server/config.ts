@@ -1,10 +1,11 @@
 import "dotenv/config";
-import { parsePort } from "../config/ports";
+import { parseAppMode, parsePort } from "../config/ports";
 import { parseLogLevel, type LogLevel } from "./logging/jsonLogger";
 import type { OpenAIProxyConfig } from "./services/openaiClient";
 
 export type AppConfig = {
   port: number;
+  appMode: "development" | "deployment";
   logLevel: LogLevel;
   duckcodingTextApiKey?: string;
   duckcodingImageApiKey?: string;
@@ -80,6 +81,7 @@ const parseNonNegativeIntegerEnv = (
 
 export const loadConfig = (): AppConfig => ({
   port: parsePort(process.env.PORT),
+  appMode: parseAppMode(process.env.APP_MODE),
   logLevel: parseLogLevel(process.env.LOG_LEVEL),
   duckcodingTextApiKey: optionalEnv(process.env.DUCKCODING_TEXT_API_KEY),
   duckcodingImageApiKey: optionalEnv(process.env.DUCKCODING_IMAGE_API_KEY),
