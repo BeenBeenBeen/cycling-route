@@ -7,6 +7,7 @@ import {
   NLayoutHeader,
   NLoadingBarProvider,
   NMessageProvider,
+  NNotificationProvider,
 } from "naive-ui";
 import { RouterView } from "vue-router";
 import AppNav from "./components/AppNav.vue";
@@ -17,20 +18,22 @@ import { naiveThemeOverrides } from "./naiveTheme";
   <NConfigProvider :theme-overrides="naiveThemeOverrides">
     <NLoadingBarProvider>
       <NDialogProvider>
-        <NMessageProvider>
-          <NLayout class="workspace">
-            <NLayoutHeader bordered class="topbar">
-              <div>
-                <h1>成都骑行路线发布工具</h1>
-                <p>路线规划与小红书发布工作台</p>
-              </div>
-              <AppNav />
-            </NLayoutHeader>
-            <NLayoutContent>
-              <RouterView />
-            </NLayoutContent>
-          </NLayout>
-        </NMessageProvider>
+        <NNotificationProvider placement="top-right">
+          <NMessageProvider>
+            <NLayout class="workspace">
+              <NLayoutHeader bordered class="topbar">
+                <div>
+                  <h1>成都骑行路线发布工具</h1>
+                  <p>路线规划与小红书发布工作台</p>
+                </div>
+                <AppNav />
+              </NLayoutHeader>
+              <NLayoutContent>
+                <RouterView />
+              </NLayoutContent>
+            </NLayout>
+          </NMessageProvider>
+        </NNotificationProvider>
       </NDialogProvider>
     </NLoadingBarProvider>
   </NConfigProvider>

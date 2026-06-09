@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { NAlert, NCode, NEmpty, NText } from "naive-ui";
+import { NEmpty, NText, useNotification } from "naive-ui";
 import {
   assistPublish,
   generateCover,
@@ -28,6 +28,7 @@ type RouteFormHandle = {
 };
 
 const draft = readRoutePublishDraft();
+const notification = useNotification();
 const routeForm = ref<RouteFormHandle | null>(null);
 const route = ref<RouteInput | null>(draft?.routeFacts ?? null);
 const gpxPath = ref(draft?.gpxPath ?? "");
@@ -38,8 +39,6 @@ const coverPath = ref("");
 const coverUrl = ref("");
 const markdownPath = ref("");
 const loadingAction = ref<LoadingAction>("");
-const errorMessage = ref("");
-const errorDetail = ref("");
 const publishStarted = ref(false);
 
 const hasPost = computed(() => generatedPost.value !== null);
@@ -47,19 +46,22 @@ const hasCover = computed(() => coverPath.value !== "");
 
 const setError = (error: unknown) => {
   if (error instanceof PublishingApiError) {
-    errorMessage.value = error.message;
-    errorDetail.value = error.detail ?? "";
+    notification.error({
+      title: error.message,
+      content: error.detail,
+      duration: 8000,
+    });
     return;
   }
 
-  errorMessage.value = error instanceof Error ? error.message : "请求失败";
-  errorDetail.value = "";
+  notification.error({
+    title: error instanceof Error ? error.message : "请求失败",
+    duration: 8000,
+  });
 };
 
 const runAction = async (action: LoadingAction, work: () => Promise<void>) => {
   loadingAction.value = action;
-  errorMessage.value = "";
-  errorDetail.value = "";
   try {
     await work();
   } catch (error) {
@@ -140,10 +142,6 @@ const onAssistPublish = () =>
 
 <template>
   <section class="publisher-view" data-testid="publisher-view">
-    <NAlert v-if="errorMessage" class="error-banner" type="error" :title="errorMessage">
-      <NCode v-if="errorDetail" :code="errorDetail" word-wrap />
-    </NAlert>
-
     <NEmpty
       v-if="!route"
       class="publisher-empty"
@@ -171,7 +169,6 @@ const onAssistPublish = () =>
         <CoverPreview
           :cover-path="coverUrl"
           :loading="loadingAction === 'generateCover'"
-          :error="loadingAction ? '' : errorDetail"
         />
         <WorkflowActions
           :loading-action="loadingAction"

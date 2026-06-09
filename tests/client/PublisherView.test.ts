@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 import { mount } from "@vue/test-utils";
+import { NNotificationProvider } from "naive-ui";
+import { defineComponent, h } from "vue";
 import { describe, expect, it, vi } from "vitest";
 import PublisherView from "../../src/client/views/PublisherView.vue";
 import { writeRoutePublishDraft } from "../../src/client/stores/routePublishDraftStore";
@@ -60,6 +62,16 @@ const plannedRoute = {
   routeFacts,
 };
 
+const mountView = () =>
+  mount(
+    defineComponent({
+      setup: () => () =>
+        h(NNotificationProvider, { placement: "top-right" }, {
+          default: () => h(PublisherView),
+        }),
+    }),
+  );
+
 describe("PublisherView", () => {
   it("loads route draft, generates post and saves markdown with GPX path", async () => {
     localStorage.clear();
@@ -82,7 +94,7 @@ describe("PublisherView", () => {
       });
     vi.stubGlobal("fetch", fetchMock);
 
-    const wrapper = mount(PublisherView);
+    const wrapper = mountView();
 
     expect(wrapper.get('input[name="routeName"]').element).toHaveProperty(
       "value",
@@ -108,9 +120,30 @@ describe("PublisherView", () => {
   it("shows an empty route hint when no planner draft exists", () => {
     localStorage.clear();
 
-    const wrapper = mount(PublisherView);
+    const wrapper = mountView();
 
     expect(wrapper.text()).toContain("尚未接收路线规划结果");
     expect(wrapper.find('input[name="routeName"]').exists()).toBe(true);
+  });
+
+  it("shows publishing request errors as a top-right notification", async () => {
+    localStorage.clear();
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      json: vi.fn().mockResolvedValue({
+        error: "文案生成失败",
+        detail: "上游服务不可用",
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const wrapper = mountView();
+
+    await wrapper.get('[data-testid="generate-post"]').trigger("click");
+
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain("文案生成失败");
+      expect(document.body.textContent).toContain("上游服务不可用");
+    });
+    expect(wrapper.find(".error-banner").exists()).toBe(false);
   });
 });

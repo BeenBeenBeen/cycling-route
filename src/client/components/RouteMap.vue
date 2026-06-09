@@ -8,13 +8,16 @@ import type { PlannedRoute } from "../api/publishingApi";
 const props = defineProps<{
   plannedRoute: PlannedRoute | null;
 }>();
+const emit = defineEmits<{
+  error: [error: Error];
+}>();
 
 const chengduCenter = [104.0668, 30.5728] as const;
 const amapJsApiConfigured = Boolean(import.meta.env.VITE_AMAP_JS_API_KEY);
 configureAmapSecurity(import.meta.env.VITE_AMAP_SECURITY_JS_CODE);
 
 const mapContainer = ref<HTMLElement | null>(null);
-const mapLoadError = ref("");
+const mapLoadFailed = ref(false);
 const mapReady = ref(false);
 let amap: AmapNamespace | null = null;
 let map: AmapMap | null = null;
@@ -84,7 +87,8 @@ const initMap = async () => {
     mapReady.value = true;
     drawRoute();
   } catch (error) {
-    mapLoadError.value = error instanceof Error ? error.message : "地图加载失败";
+    mapLoadFailed.value = true;
+    emit("error", error instanceof Error ? error : new Error("地图加载失败"));
   }
 };
 
@@ -118,10 +122,7 @@ watch(
       <div v-if="!amapJsApiConfigured" class="map-state">
         缺少高德 JS Key，默认地点为成都市
       </div>
-      <div v-else-if="mapLoadError" class="map-state">
-        {{ mapLoadError }}
-      </div>
-      <div v-else-if="!mapReady" class="map-state map-state-loading">
+      <div v-else-if="!mapReady && !mapLoadFailed" class="map-state map-state-loading">
         二维地图加载中，默认地点为成都市
       </div>
     </div>
@@ -131,7 +132,12 @@ watch(
           <NStatistic label="里程" :value="`${plannedRoute.distanceKm} km`" />
         </NGi>
         <NGi>
-          <NStatistic label="累计爬升" :value="`${plannedRoute.elevation.elevationGainM ?? 0} m`" />
+          <NStatistic
+            label="累计爬升"
+            :value="plannedRoute.elevation.status === 'success'
+              ? `${plannedRoute.elevation.elevationGainM ?? 0} m`
+              : '--'"
+          />
         </NGi>
         <NGi v-if="plannedRoute.estimatedDurationMin">
           <NStatistic label="预计耗时" :value="`${plannedRoute.estimatedDurationMin} 分钟`" />

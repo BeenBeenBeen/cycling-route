@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { NAlert, NCard, NEmpty, NImage, NSpin, NText } from "naive-ui";
+import { NCard, NEmpty, NImage, NSpin, NText } from "naive-ui";
 
 defineProps<{
   coverPath: string;
   loading: boolean;
-  error?: string;
 }>();
 </script>
 
@@ -16,8 +15,5 @@ defineProps<{
       <NEmpty v-else description="尚未生成封面" />
     </div>
     <NText v-if="coverPath" depth="3">{{ coverPath }}</NText>
-    <NAlert v-if="error" type="error" :show-icon="false">
-      {{ error }}
-    </NAlert>
   </NCard>
 </template>
