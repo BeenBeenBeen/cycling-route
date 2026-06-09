@@ -295,12 +295,63 @@ label {
 
 .map-shell,
 .map-empty {
-  display: grid;
-  place-items: center;
+  position: relative;
   min-height: 180px;
   border: 1px solid #d8dee6;
   border-radius: 6px;
   background: #eef2f6;
+  overflow: hidden;
+}
+
+.map-state {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  z-index: 1;
+  max-width: min(360px, calc(100% - 32px));
+  border: 1px solid #d8dee6;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #334155;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.route-map {
+  position: relative;
+  padding: 0;
+}
+
+.route-map > .map-shell {
+  border: 0;
+  border-radius: 8px;
+}
+
+.route-map-overlay {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  z-index: 2;
+  width: min(420px, calc(100% - 32px));
+  border: 1px solid #d8dee6;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+  padding: 14px;
+}
+
+.route-map-overlay > strong {
+  display: block;
+  margin-bottom: 10px;
+  color: #1f2933;
+  font-size: 16px;
+}
+
+.route-map-overlay-empty p {
+  margin: 0;
+  color: #697586;
+  font-size: 13px;
 }
 
 .route-facts {
