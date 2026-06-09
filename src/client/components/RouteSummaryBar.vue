@@ -16,7 +16,14 @@ defineProps<{
         <NStatistic label="距离" :value="`${plannedRoute?.distanceKm ?? 0} km`" />
       </NGi>
       <NGi>
-        <NStatistic label="累计爬升" :value="`${plannedRoute?.elevation.elevationGainM ?? 0} m`" />
+        <NStatistic
+          label="累计爬升"
+          :value="!plannedRoute
+            ? '0 m'
+            : plannedRoute.elevation.status === 'success'
+              ? `${plannedRoute.elevation.elevationGainM ?? 0} m`
+              : '--'"
+        />
       </NGi>
       <NGi>
         <NStatistic

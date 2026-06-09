@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { NAlert, NCode } from "naive-ui";
+import { useNotification } from "naive-ui";
 import { useRouter } from "vue-router";
 import {
   generateGpx,
@@ -21,6 +21,7 @@ import { writeRoutePublishDraft } from "../stores/routePublishDraftStore";
 type LoadingAction = "" | "searchPlaces" | "generateRoute" | "generateGpx";
 
 const router = useRouter();
+const notification = useNotification();
 const startCandidates = ref<PlaceCandidate[]>([]);
 const endCandidates = ref<PlaceCandidate[]>([]);
 const selectedStart = ref<PlaceCandidate | null>(null);
@@ -29,8 +30,6 @@ const plannedRoute = ref<PlannedRoute | null>(null);
 const gpxPath = ref("");
 const gpxUrl = ref("");
 const loadingAction = ref<LoadingAction>("");
-const errorMessage = ref("");
-const errorDetail = ref("");
 
 const canGenerateRoute = computed(
   () => selectedStart.value !== null && selectedEnd.value !== null,
@@ -38,19 +37,22 @@ const canGenerateRoute = computed(
 
 const setError = (error: unknown) => {
   if (error instanceof PublishingApiError) {
-    errorMessage.value = error.message;
-    errorDetail.value = error.detail ?? "";
+    notification.error({
+      title: error.message,
+      content: error.detail,
+      duration: 8000,
+    });
     return;
   }
 
-  errorMessage.value = error instanceof Error ? error.message : "请求失败";
-  errorDetail.value = "";
+  notification.error({
+    title: error instanceof Error ? error.message : "请求失败",
+    duration: 8000,
+  });
 };
 
 const runAction = async (action: LoadingAction, work: () => Promise<void>) => {
   loadingAction.value = action;
-  errorMessage.value = "";
-  errorDetail.value = "";
   try {
     await work();
   } catch (error) {
@@ -83,6 +85,13 @@ const onGenerateRoute = () =>
       end: selectedEnd.value,
     });
     plannedRoute.value = result.route;
+    if (result.route.elevation.status === "failed") {
+      notification.error({
+        title: "累计爬升获取失败",
+        content: result.route.elevation.error ?? "海拔服务暂时不可用",
+        duration: 8000,
+      });
+    }
     gpxPath.value = "";
     gpxUrl.value = "";
   });
@@ -117,12 +126,8 @@ const onSendToPublisher = async () => {
 
 <template>
   <section class="route-planner-view">
-    <NAlert v-if="errorMessage" class="error-banner" type="error" :title="errorMessage">
-      <NCode v-if="errorDetail" :code="errorDetail" word-wrap />
-    </NAlert>
-
     <section class="route-planner-map-stage" data-testid="route-planner-map-stage">
-      <RouteMap :planned-route="plannedRoute" />
+      <RouteMap :planned-route="plannedRoute" @error="setError" />
     </section>
 
     <aside class="route-planner-panel" data-testid="route-planner-panel">

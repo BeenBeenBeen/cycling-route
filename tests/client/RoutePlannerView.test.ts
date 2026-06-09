@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 import { mount } from "@vue/test-utils";
+import { NNotificationProvider } from "naive-ui";
+import { defineComponent, h } from "vue";
 import { createMemoryHistory, createRouter } from "vue-router";
 import { describe, expect, it, vi } from "vitest";
 import RoutePlannerView from "../../src/client/views/RoutePlannerView.vue";
@@ -49,6 +51,21 @@ const plannedRoute = {
   routeFacts,
 };
 
+const routeWithoutElevation = {
+  ...plannedRoute,
+  elevation: {
+    ...plannedRoute.elevation,
+    status: "failed" as const,
+    points: plannedRoute.elevation.points.map(({ ele: _ele, ...point }) => point),
+    elevationGainM: undefined,
+    error: "Open-Elevation HTTP request failed with status 504.",
+  },
+  routeFacts: {
+    ...routeFacts,
+    elevationGainM: 0,
+  },
+};
+
 const mountView = async () => {
   const router = createRouter({
     history: createMemoryHistory(),
@@ -62,11 +79,19 @@ const mountView = async () => {
 
   return {
     router,
-    wrapper: mount(RoutePlannerView, {
-      global: {
-        plugins: [router],
+    wrapper: mount(
+      defineComponent({
+        setup: () => () =>
+          h(NNotificationProvider, { placement: "top-right" }, {
+            default: () => h(RoutePlannerView),
+          }),
+      }),
+      {
+        global: {
+          plugins: [router],
+        },
       },
-    }),
+    ),
   };
 };
 
@@ -119,5 +144,62 @@ describe("RoutePlannerView", () => {
       gpxPath: "data/routes/route-1.gpx",
       gpxUrl: "/media/routes/route-1.gpx",
     });
+  });
+
+  it("shows request errors as a top-right notification", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      json: vi.fn().mockResolvedValue({
+        error: "地点搜索失败",
+        detail: "高德地图服务暂时不可用",
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { wrapper } = await mountView();
+
+    await wrapper.get('[data-testid="start-query"]').setValue("犀浦");
+    await wrapper.get('[data-testid="end-query"]').setValue("青城山");
+    await wrapper.get('[data-testid="search-places"]').trigger("click");
+
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain("地点搜索失败");
+      expect(document.body.textContent).toContain("高德地图服务暂时不可用");
+    });
+    expect(wrapper.find(".error-banner").exists()).toBe(false);
+  });
+
+  it("notifies when route elevation lookup fails", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          startCandidates: [start],
+          endCandidates: [end],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ route: routeWithoutElevation }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { wrapper } = await mountView();
+    await wrapper.get('[data-testid="start-query"]').setValue("犀浦");
+    await wrapper.get('[data-testid="end-query"]').setValue("青城山");
+    await wrapper.get('[data-testid="search-places"]').trigger("click");
+    await vi.waitFor(() =>
+      expect(wrapper.find('[data-testid="start-candidate-B001"]').exists()).toBe(true),
+    );
+    await wrapper.get('[data-testid="start-candidate-B001"]').trigger("click");
+    await wrapper.get('[data-testid="end-candidate-B002"]').trigger("click");
+    await wrapper.get('[data-testid="generate-route"]').trigger("click");
+
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain("累计爬升获取失败");
+      expect(document.body.textContent).toContain("status 504");
+    });
+    expect(wrapper.get('[data-testid="route-summary-bar"]').text()).not.toContain("0 m");
   });
 });
