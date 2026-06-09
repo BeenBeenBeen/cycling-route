@@ -1,8 +1,15 @@
 # cycling-route
 
-本项目是本地运行的成都周边骑行路线发布工具，用于辅助生成小红书发布素材。应用提供起终点地点搜索、骑行路线生成、累计爬升计算、GPX 路书下载、路线录入、AI 文案生成、AI 封面背景生成、本地封面合成、Markdown 保存和小红书辅助发布。
+一个本地运行的成都周边骑行路线发布工具，用于辅助生成小红书发布素材。应用支持起终点地点搜索、骑行路线生成、累计爬升计算、GPX 路书下载、路线录入、AI 文案生成、AI 封面背景生成、本地封面合成、Markdown 保存和小红书辅助发布。
 
 系统不会自动点击小红书最终发布按钮，不保存小红书账号密码，不绕过登录、验证码或平台风控。
+
+## 项目说明
+
+- 前端使用 Vue 3 + Vite
+- 后端使用 Express + TypeScript
+- 通过本地服务同时提供页面和 API
+- 不会自动点击小红书最终发布按钮，不保存小红书账号密码，不绕过登录、验证码或平台风控
 
 ## 安装依赖
 
@@ -10,7 +17,7 @@
 npm install
 ```
 
-## 配置
+## 配置环境
 
 复制模板并填写配置：
 
@@ -22,6 +29,7 @@ cp .env.example .env
 
 ```env
 PORT=8787
+APP_MODE=development
 LOG_LEVEL=info
 DUCKCODING_BASE_URL=https://www.duckcoding.ai/v1
 DUCKCODING_TEXT_API_KEY=
@@ -54,6 +62,16 @@ DUCKCODING_IMAGE_MODEL=gpt-image-1
 LOG_LEVEL=debug
 ```
 
+模式说明：
+
+```env
+APP_MODE=development
+APP_MODE=deployment
+```
+
+- `development`：默认值，前端和后端都只监听本机地址
+- `deployment`：部署模式，前端开发服务器和后端都会监听 `0.0.0.0`，便于通过公网 IP 访问
+
 ## 代理配置
 
 OpenAI 请求支持代理，优先级如下：
@@ -76,10 +94,30 @@ HTTP_PROXY=
 ALL_PROXY=socks5://127.0.0.1:7890
 ```
 
-## 启动
+## 启动方法
+
+1. 安装依赖：
+
+```bash
+npm install
+```
+
+2. 配置环境变量：
+
+```bash
+cp .env.example .env
+```
+
+3. 启动开发服务：
 
 ```bash
 npm run dev
+```
+
+如果要在服务器上直接用公网 IP 访问开发服务，先设置：
+
+```env
+APP_MODE=deployment
 ```
 
 前端地址：

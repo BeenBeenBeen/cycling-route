@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parsePort } from "../../src/config/ports";
+import { parseAppMode, parsePort, resolveListenHost } from "../../src/config/ports";
 import { loadConfig } from "../../src/server/config";
 
 describe("parsePort", () => {
@@ -20,10 +20,34 @@ describe("parsePort", () => {
   });
 });
 
+describe("parseAppMode", () => {
+  it("parses development and deployment modes", () => {
+    expect(parseAppMode("development")).toBe("development");
+    expect(parseAppMode("deployment")).toBe("deployment");
+  });
+
+  it("rejects invalid app modes with a clear error", () => {
+    expect(() => parseAppMode("staging")).toThrow(
+      "Invalid APP_MODE: must be development or deployment",
+    );
+  });
+});
+
+describe("resolveListenHost", () => {
+  it("uses localhost in development mode", () => {
+    expect(resolveListenHost("development")).toBe("127.0.0.1");
+  });
+
+  it("uses all interfaces in deployment mode", () => {
+    expect(resolveListenHost("deployment")).toBe("0.0.0.0");
+  });
+});
+
 describe("loadConfig", () => {
   it("loads all server configuration values from environment variables", () => {
     const previousEnv = { ...process.env };
     process.env.PORT = "8788";
+    process.env.APP_MODE = "deployment";
     process.env.LOG_LEVEL = "debug";
     delete process.env.OPENAI_API_KEY;
     delete process.env.OPENAI_TEXT_MODEL;
@@ -47,6 +71,7 @@ describe("loadConfig", () => {
 
     expect(loadConfig()).toEqual({
       port: 8788,
+      appMode: "deployment",
       logLevel: "debug",
       duckcodingTextApiKey: "duck-text-key",
       duckcodingImageApiKey: "duck-image-key",
@@ -74,6 +99,7 @@ describe("loadConfig", () => {
   it("normalizes blank optional configuration values", () => {
     const previousEnv = { ...process.env };
     process.env.PORT = "8788";
+    delete process.env.APP_MODE;
     process.env.LOG_LEVEL = "info";
     delete process.env.OPENAI_API_KEY;
     delete process.env.OPENAI_TEXT_MODEL;
@@ -97,6 +123,7 @@ describe("loadConfig", () => {
 
     expect(loadConfig()).toEqual({
       port: 8788,
+      appMode: "development",
       logLevel: "info",
       duckcodingTextApiKey: undefined,
       duckcodingImageApiKey: undefined,

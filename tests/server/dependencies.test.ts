@@ -5,6 +5,7 @@ import { createProductionDependencies } from "../../src/server/dependencies";
 
 const config: AppConfig = {
   port: 8787,
+  appMode: "development",
   logLevel: "error",
   duckcodingTextApiKey: "duck-text-key",
   duckcodingImageApiKey: "duck-image-key",
