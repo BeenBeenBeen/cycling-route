@@ -103,4 +103,75 @@ describe("createOpenElevationProvider", () => {
       })([{ distanceM: 0, lng: 104.1, lat: 30.6 }]),
     ).rejects.toThrow(/Open-Elevation.*502/i);
   });
+
+  it("logs and exposes upstream response details for failed batches", async () => {
+    const logger = { info: vi.fn(), error: vi.fn() };
+    const provider = createOpenElevationProvider({
+      baseUrl: "https://elevation.example/api/v1/lookup",
+      batchSize: 2,
+      fetch: vi.fn<typeof globalThis.fetch>().mockResolvedValue(
+        new Response("upstream gateway timeout", {
+          status: 504,
+          statusText: "Gateway Timeout",
+        }),
+      ),
+      logger: logger as any,
+    });
+
+    await expect(
+      provider([
+        { distanceM: 0, lng: 104.1, lat: 30.6 },
+        { distanceM: 100, lng: 104.2, lat: 30.7 },
+        { distanceM: 200, lng: 104.3, lat: 30.8 },
+      ]),
+    ).rejects.toThrow(
+      "Open-Elevation HTTP request failed with status 504 Gateway Timeout: upstream gateway timeout (batch 1/2).",
+    );
+
+    expect(logger.error).toHaveBeenCalledWith("elevation.lookup.failed", {
+      status: 504,
+      statusText: "Gateway Timeout",
+      responseBody: "upstream gateway timeout",
+      batchIndex: 1,
+      batchCount: 2,
+      batchPointCount: 2,
+      completedPointCount: 0,
+    });
+  });
+
+  it("logs the underlying cause when the elevation request cannot connect", async () => {
+    const logger = { info: vi.fn(), error: vi.fn() };
+    const cause = Object.assign(new Error("connect ETIMEDOUT 203.0.113.1:443"), {
+      code: "ETIMEDOUT",
+    });
+    const fetchError = new TypeError("fetch failed", { cause });
+    const provider = createOpenElevationProvider({
+      baseUrl: "https://elevation.example/api/v1/lookup",
+      batchSize: 1,
+      fetch: vi.fn<typeof globalThis.fetch>().mockRejectedValue(fetchError),
+      logger: logger as any,
+    });
+
+    await expect(
+      provider([{ distanceM: 0, lng: 104.1, lat: 30.6 }]),
+    ).rejects.toThrow(
+      "Open-Elevation request failed: fetch failed; cause: connect ETIMEDOUT 203.0.113.1:443 (ETIMEDOUT) (batch 1/1).",
+    );
+
+    expect(logger.error).toHaveBeenCalledWith("elevation.lookup.failed", {
+      error: {
+        name: "TypeError",
+        message: "fetch failed",
+        cause: {
+          name: "Error",
+          message: "connect ETIMEDOUT 203.0.113.1:443",
+          code: "ETIMEDOUT",
+        },
+      },
+      batchIndex: 1,
+      batchCount: 1,
+      batchPointCount: 1,
+      completedPointCount: 0,
+    });
+  });
 });
