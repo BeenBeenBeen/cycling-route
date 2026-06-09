@@ -96,6 +96,58 @@ label {
   color: #697586;
 }
 
+.app-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-nav a {
+  display: inline-grid;
+  place-items: center;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid #d8dee6;
+  border-radius: 6px;
+  color: #334155;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.app-nav a.active {
+  border-color: #d9480f;
+  background: #fff4ec;
+  color: #c2410c;
+}
+
+.route-planner-view {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 420px;
+  gap: 16px;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.route-planner-map-stage {
+  min-height: calc(100vh - 112px);
+}
+
+.route-planner-map-stage .route-map,
+.route-planner-map-stage .map-shell,
+.route-planner-map-stage .map-empty {
+  height: 100%;
+  min-height: calc(100vh - 112px);
+}
+
+.route-planner-panel {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  max-height: calc(100vh - 112px);
+  overflow: auto;
+}
+
 .layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
@@ -296,6 +348,44 @@ label {
   pointer-events: none;
 }
 
+.route-summary-bar {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  border: 1px solid #d8dee6;
+  border-radius: 8px;
+  background: #fff;
+  padding: 14px;
+}
+
+.route-summary-bar div {
+  display: grid;
+  gap: 4px;
+}
+
+.route-summary-bar span {
+  color: #697586;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.route-summary-bar strong,
+.route-summary-bar a {
+  color: #1f2933;
+  font-size: 14px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.publisher-empty,
+.markdown-status {
+  max-width: 1440px;
+  margin: 16px auto 0;
+  border: 1px solid #d8dee6;
+  background: #fff;
+  padding: 16px;
+}
+
 .status-stack {
   display: grid;
   gap: 6px;
@@ -328,6 +418,27 @@ label {
 }
 
 @media (max-width: 960px) {
+  .topbar {
+    display: grid;
+    gap: 12px;
+  }
+
+  .route-planner-view {
+    grid-template-columns: 1fr;
+  }
+
+  .route-planner-map-stage,
+  .route-planner-map-stage .route-map,
+  .route-planner-map-stage .map-shell,
+  .route-planner-map-stage .map-empty {
+    min-height: 360px;
+  }
+
+  .route-planner-panel {
+    max-height: none;
+    overflow: visible;
+  }
+
   .layout,
   .field-grid,
   .field-grid.three,

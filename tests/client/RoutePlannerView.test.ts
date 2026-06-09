@@ -89,6 +89,10 @@ describe("RoutePlannerView", () => {
 
     const { router, wrapper } = await mountView();
 
+    expect(wrapper.find('[data-testid="route-planner-map-stage"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="route-planner-panel"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="route-summary-bar"]').exists()).toBe(true);
+
     await wrapper.get('[data-testid="start-query"]').setValue("犀浦");
     await wrapper.get('[data-testid="end-query"]').setValue("青城山");
     await wrapper.get('[data-testid="search-places"]').trigger("click");

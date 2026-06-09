@@ -121,9 +121,11 @@ const onSendToPublisher = async () => {
       <pre v-if="errorDetail">{{ errorDetail }}</pre>
     </section>
 
-    <RouteMap :planned-route="plannedRoute" />
+    <section class="route-planner-map-stage" data-testid="route-planner-map-stage">
+      <RouteMap :planned-route="plannedRoute" />
+    </section>
 
-    <aside class="route-planner-overlay">
+    <aside class="route-planner-panel" data-testid="route-planner-panel">
       <RoutePlannerForm @search="onSearchPlaces" />
       <PlaceCandidateSelector
         :start-candidates="startCandidates"
@@ -133,35 +135,35 @@ const onSendToPublisher = async () => {
         @select-start="selectedStart = $event"
         @select-end="selectedEnd = $event"
       />
-    </aside>
 
-    <RouteSummaryBar
-      :planned-route="plannedRoute"
-      :gpx-path="gpxPath"
-      :gpx-url="gpxUrl"
-    />
-
-    <GpxDownloadPanel
-      :gpx-path="gpxPath"
-      :gpx-url="gpxUrl"
-      :loading="loadingAction === 'generateGpx'"
-    />
-
-    <div class="route-planner-actions">
-      <WorkflowActions
-        :loading-action="loadingAction"
-        :has-post="false"
-        :has-cover="false"
-        :can-generate-route="canGenerateRoute"
-        :has-route="plannedRoute !== null"
-        :can-send-to-publisher="plannedRoute !== null"
-        markdown-path=""
-        :publish-started="false"
-        :show-publish-actions="false"
-        @generate-route="onGenerateRoute"
-        @generate-gpx="onGenerateGpx"
-        @send-to-publisher="onSendToPublisher"
+      <RouteSummaryBar
+        :planned-route="plannedRoute"
+        :gpx-path="gpxPath"
+        :gpx-url="gpxUrl"
       />
-    </div>
+
+      <GpxDownloadPanel
+        :gpx-path="gpxPath"
+        :gpx-url="gpxUrl"
+        :loading="loadingAction === 'generateGpx'"
+      />
+
+      <div class="route-planner-actions">
+        <WorkflowActions
+          :loading-action="loadingAction"
+          :has-post="false"
+          :has-cover="false"
+          :can-generate-route="canGenerateRoute"
+          :has-route="plannedRoute !== null"
+          :can-send-to-publisher="plannedRoute !== null"
+          markdown-path=""
+          :publish-started="false"
+          :show-publish-actions="false"
+          @generate-route="onGenerateRoute"
+          @generate-gpx="onGenerateGpx"
+          @send-to-publisher="onSendToPublisher"
+        />
+      </div>
+    </aside>
   </section>
 </template>
