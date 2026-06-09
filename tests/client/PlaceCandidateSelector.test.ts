@@ -31,4 +31,24 @@ describe("PlaceCandidateSelector", () => {
     expect(wrapper.emitted("select-start")?.[0]).toEqual([candidate]);
     expect(wrapper.emitted("select-end")?.[0]).toEqual([end]);
   });
+
+  it("wraps long candidate labels inside a responsive text element", () => {
+    const longCandidate = {
+      ...candidate,
+      id: "LONG",
+      name: "成都市天府绿道锦城湖桂溪生态公园超长候选地点名称",
+      address: "四川省成都市高新区绕城高速南侧很长很长的地址描述",
+    };
+    const wrapper = mount(PlaceCandidateSelector, {
+      props: {
+        startCandidates: [longCandidate],
+        endCandidates: [],
+        selectedStart: null,
+        selectedEnd: null,
+      },
+    });
+
+    const label = wrapper.get('[data-testid="start-candidate-LONG"] .candidate-label');
+    expect(label.text()).toContain("成都市天府绿道锦城湖");
+  });
 });

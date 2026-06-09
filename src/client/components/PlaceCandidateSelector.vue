@@ -26,12 +26,13 @@ const labelFor = (candidate: PlaceCandidate) =>
         <NList v-if="startCandidates.length" class="candidate-list" bordered>
           <NListItem v-for="candidate in startCandidates" :key="candidate.id">
             <NButton
+              class="candidate-button"
               :data-testid="`start-candidate-${candidate.id}`"
               :type="selectedStart?.id === candidate.id ? 'primary' : 'default'"
               block
               @click="emit('select-start', candidate)"
             >
-              {{ labelFor(candidate) }}
+              <span class="candidate-label">{{ labelFor(candidate) }}</span>
             </NButton>
           </NListItem>
         </NList>
@@ -42,12 +43,13 @@ const labelFor = (candidate: PlaceCandidate) =>
         <NList v-if="endCandidates.length" class="candidate-list" bordered>
           <NListItem v-for="candidate in endCandidates" :key="candidate.id">
             <NButton
+              class="candidate-button"
               :data-testid="`end-candidate-${candidate.id}`"
               :type="selectedEnd?.id === candidate.id ? 'primary' : 'default'"
               block
               @click="emit('select-end', candidate)"
             >
-              {{ labelFor(candidate) }}
+              <span class="candidate-label">{{ labelFor(candidate) }}</span>
             </NButton>
           </NListItem>
         </NList>
@@ -56,3 +58,34 @@ const labelFor = (candidate: PlaceCandidate) =>
     </NGrid>
   </NCard>
 </template>
+
+<style scoped>
+.candidate-list {
+  min-width: 0;
+}
+
+.candidate-button {
+  min-width: 0;
+  height: auto;
+  min-height: 38px;
+  white-space: normal;
+}
+
+.candidate-button :deep(.n-button__content) {
+  min-width: 0;
+  width: 100%;
+  white-space: normal;
+}
+
+.candidate-label {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  font-size: clamp(11px, 1.9vw, 14px);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+  text-align: left;
+}
+</style>
