@@ -46,6 +46,43 @@ describe("createAmapCyclingRoutePlanner", () => {
     });
   });
 
+  it("parses amap v4 cycling route responses", async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(
+      Response.json({
+        errcode: 0,
+        errmsg: "OK",
+        data: {
+          paths: [
+            {
+              distance: 75383,
+              duration: 18092,
+              steps: [
+                { polyline: "104.141107,30.628863;104.142882,30.628255" },
+                { polyline: "104.142882,30.628255;103.560838,30.907921" },
+              ],
+            },
+          ],
+        },
+      }),
+    );
+
+    const plan = createAmapCyclingRoutePlanner({ apiKey: "amap-secret", fetch });
+    const result = await plan({
+      start: place("start", 104.141107, 30.628863),
+      end: place("end", 103.560838, 30.907921),
+    });
+
+    expect(result).toEqual({
+      distanceM: 75383,
+      durationSeconds: 18092,
+      polylineGcj02: [
+        { lng: 104.141107, lat: 30.628863 },
+        { lng: 104.142882, lat: 30.628255 },
+        { lng: 103.560838, lat: 30.907921 },
+      ],
+    });
+  });
+
   it("does not expose the api key in requests or logs", async () => {
     const logger = { info: vi.fn(), error: vi.fn() };
     const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(
@@ -93,5 +130,14 @@ describe("createAmapCyclingRoutePlanner", () => {
         ),
       })({ start: place("start", 104, 30), end: place("end", 104.1, 30.1) }),
     ).rejects.toThrow(/INVALID_PARAMS/i);
+
+    await expect(
+      createAmapCyclingRoutePlanner({
+        apiKey: "key",
+        fetch: vi.fn<typeof globalThis.fetch>().mockResolvedValue(
+          Response.json({ errcode: 10001, errmsg: "INVALID_USER_KEY" }),
+        ),
+      })({ start: place("start", 104, 30), end: place("end", 104.1, 30.1) }),
+    ).rejects.toThrow(/INVALID_USER_KEY/i);
   });
 });

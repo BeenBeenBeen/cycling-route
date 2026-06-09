@@ -41,23 +41,33 @@ const createOverlaySvg = ({
     `${route.elevationGainM} m`,
     route.difficulty,
   ];
+  const routeLine = `${route.startPoint} TO ${route.endPoint}`.toUpperCase();
 
   return `
 <svg width="1080" height="1440" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="shade" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#000" stop-opacity="0.08"/>
+      <stop offset="0%" stop-color="#000" stop-opacity="0.20"/>
+      <stop offset="38%" stop-color="#000" stop-opacity="0.06"/>
       <stop offset="72%" stop-color="#000" stop-opacity="0.12"/>
-      <stop offset="100%" stop-color="#000" stop-opacity="0.72"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.42"/>
     </linearGradient>
   </defs>
   <rect width="1080" height="1440" fill="url(#shade)"/>
-  <rect x="72" y="988" width="936" height="294" rx="0" fill="#101828" fill-opacity="0.72"/>
-  <text x="96" y="1085" fill="#ffffff" font-size="72" font-weight="800" font-family="Arial, sans-serif">${escapeXml(coverTitle)}</text>
-  <text x="96" y="1145" fill="#f2f4f7" font-size="34" font-weight="600" font-family="Arial, sans-serif">${escapeXml(coverSubtitle)}</text>
-  <text x="96" y="1218" fill="#ffffff" font-size="42" font-weight="700" font-family="Arial, sans-serif">${facts.map(escapeXml).join("  /  ")}</text>
-  <text x="96" y="1274" fill="#f2f4f7" font-size="32" font-weight="600" font-family="Arial, sans-serif">${escapeXml(route.startPoint)} → ${escapeXml(route.endPoint)}</text>
-  <text x="96" y="1340" fill="#ff6b2c" font-size="28" font-weight="700" font-family="Arial, sans-serif">${escapeXml(route.routeName)}</text>
+  <path d="M86 865 C290 785 420 962 612 874 S856 780 1016 848" fill="none" stroke="#f6c46b" stroke-width="10" stroke-linecap="round" stroke-opacity="0.82"/>
+  <path d="M96 890 C306 812 430 984 626 900 S842 818 982 878" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-opacity="0.72"/>
+
+  <text x="72" y="118" fill="#ffffff" font-size="34" font-weight="800" font-family="Arial, sans-serif" letter-spacing="0">CHENGDU CYCLING</text>
+  <text x="72" y="158" fill="#ffffff" font-size="24" font-weight="700" font-family="Arial, sans-serif" letter-spacing="0">ROUTE POSTER</text>
+
+  <text x="72" y="352" fill="#ffffff" font-size="104" font-weight="900" font-family="Arial, 'Microsoft YaHei', sans-serif" letter-spacing="0">${escapeXml(coverTitle)}</text>
+  <text x="76" y="430" fill="#ffffff" font-size="42" font-weight="700" font-family="Arial, 'Microsoft YaHei', sans-serif" letter-spacing="0">${escapeXml(coverSubtitle)}</text>
+
+  <text x="72" y="1048" fill="#ffffff" font-size="54" font-weight="900" font-family="Arial, sans-serif" letter-spacing="0">${facts.map(escapeXml).join("  /  ")}</text>
+  <line x1="72" y1="1084" x2="560" y2="1084" stroke="#ffffff" stroke-width="4" stroke-opacity="0.8"/>
+  <text x="72" y="1150" fill="#ffffff" font-size="36" font-weight="800" font-family="Arial, sans-serif" letter-spacing="0">${escapeXml(routeLine)}</text>
+  <text x="72" y="1214" fill="#ffffff" font-size="32" font-weight="700" font-family="Arial, 'Microsoft YaHei', sans-serif" letter-spacing="0">${escapeXml(route.routeName)}</text>
+  <text x="72" y="1346" fill="#ffffff" font-size="28" font-weight="700" font-family="Arial, sans-serif" letter-spacing="0">THE CYCLES CLUB STYLE / RIDE CHENGDU</text>
 </svg>`;
 };
 

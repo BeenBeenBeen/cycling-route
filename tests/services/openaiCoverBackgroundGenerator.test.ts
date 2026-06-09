@@ -69,8 +69,9 @@ describe("createOpenaiCoverBackgroundGenerator", () => {
       }),
     );
     const request = generate.mock.calls[0][0];
-    expect(request.prompt).toContain("large areas of rich visual texture");
-    expect(request.prompt).toContain("premium editorial poster background");
+    expect(request.prompt).toContain("premium Xiaohongshu outdoor cycling club posters");
+    expect(request.prompt).toContain("cinematic real-photography look");
+    expect(request.prompt).toContain("large clean areas reserved for white typography");
     expect(request.prompt).not.toContain("route/map texture");
     expect(await readFile(imagePath, "utf8")).toBe("png-data");
   });

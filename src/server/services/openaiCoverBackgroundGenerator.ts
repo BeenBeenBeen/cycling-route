@@ -61,11 +61,11 @@ const buildImagePrompt = (imagePrompt: string) =>
   [
     imagePrompt,
     "",
-    "Create a vertical cycling route poster background.",
-    "Style: premium editorial poster background with large areas of rich visual texture.",
-    "Use layered light, atmospheric gradients, tactile material grain, cinematic depth, and bold negative space.",
-    "Keep the composition abstract and non-geographic; do not include maps, route lines, contour lines, or location textures.",
-    "Mood: outdoor cycling energy, clean sports aesthetic, refined and spacious.",
+    "Create a vertical full-bleed cycling event poster background inspired by premium Xiaohongshu outdoor cycling club posters.",
+    "Use a cinematic real-photography look: mountain roads, coast roads, forest roads, distant peaks, riders as small silhouettes, motion blur, warm sunlight, blue sky, mist, or dramatic shadows.",
+    "Style: bold editorial travel poster, high contrast, spacious composition, large clean areas reserved for white typography.",
+    "Use layered light, atmospheric gradients, tactile film grain, dynamic brush-stroke energy, and a refined cycling club mood.",
+    "Keep the scene photographic and poster-ready, not a map graphic; do not include maps, route lines, contour lines, or location textures.",
     "Do not generate final Chinese text, readable labels, numbers, logos, watermarks, or UI text.",
     "The local application will add all route facts and typography later.",
   ].join("\n");

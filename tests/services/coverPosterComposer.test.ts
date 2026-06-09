@@ -53,6 +53,39 @@ describe("composeCoverPoster", () => {
     expect(metadata.height).toBe(1440);
   });
 
+  it("uses a full-bleed poster layout without a dark information card", async () => {
+    const dir = path.join(tmpdir(), `cover-poster-layout-${Date.now()}`);
+    await mkdir(dir, { recursive: true });
+    const backgroundPath = path.join(dir, "background.png");
+    await sharp({
+      create: {
+        width: 1080,
+        height: 1440,
+        channels: 3,
+        background: "#ecfdf3",
+      },
+    })
+      .png()
+      .toFile(backgroundPath);
+
+    const result = await composeCoverPoster({
+      backgroundPath,
+      route,
+      coverTitle: "成都到青城山",
+      coverSubtitle: "82km / 620m",
+      outputDir: dir,
+    });
+
+    const pixel = await sharp(result.coverPath)
+      .extract({ left: 84, top: 1008, width: 1, height: 1 })
+      .raw()
+      .toBuffer();
+
+    expect(pixel[0]).toBeGreaterThan(100);
+    expect(pixel[1]).toBeGreaterThan(100);
+    expect(pixel[2]).toBeGreaterThan(100);
+  });
+
   it("fails when the background file is missing", async () => {
     await expect(
       composeCoverPoster({

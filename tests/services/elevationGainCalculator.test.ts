@@ -11,6 +11,15 @@ describe("calculateElevationGainM", () => {
     ).toBe(20);
   });
 
+  it("calculates cumulative gain instead of endpoint elevation difference", () => {
+    expect(
+      calculateElevationGainM(
+        [{ ele: 100 }, { ele: 130 }, { ele: 90 }, { ele: 120 }],
+        0,
+      ),
+    ).toBe(60);
+  });
+
   it("returns zero when fewer than two elevation values exist", () => {
     expect(calculateElevationGainM([{ ele: 500 }], 3)).toBe(0);
     expect(calculateElevationGainM([{ lng: 104, lat: 30 }], 3)).toBe(0);

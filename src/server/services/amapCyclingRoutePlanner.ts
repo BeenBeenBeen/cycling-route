@@ -26,6 +26,12 @@ type AmapRoutePath = {
 type AmapCyclingRouteResponse = {
   status?: unknown;
   info?: unknown;
+  errcode?: unknown;
+  errmsg?: unknown;
+  errdetail?: unknown;
+  data?: {
+    paths?: unknown;
+  };
   route?: {
     paths?: unknown;
   };
@@ -103,6 +109,27 @@ const readJson = async (response: Response): Promise<AmapCyclingRouteResponse> =
   }
 };
 
+const isSuccessfulResponse = (payload: AmapCyclingRouteResponse) =>
+  payload.status === "1" || payload.errcode === 0;
+
+const readErrorMessage = (payload: AmapCyclingRouteResponse) => {
+  const message =
+    typeof payload.info === "string" && payload.info.trim()
+      ? payload.info
+      : typeof payload.errmsg === "string" && payload.errmsg.trim()
+        ? payload.errmsg
+        : typeof payload.errdetail === "string" && payload.errdetail.trim()
+          ? payload.errdetail
+          : "unknown error";
+
+  return message;
+};
+
+const readPaths = (payload: AmapCyclingRouteResponse) => {
+  const paths = payload.data?.paths ?? payload.route?.paths;
+  return Array.isArray(paths) ? (paths as AmapRoutePath[]) : [];
+};
+
 export const createAmapCyclingRoutePlanner =
   ({ apiKey, fetch: fetchImpl = globalThis.fetch, logger }: AmapCyclingRoutePlannerDeps) =>
   async (input: { start: PlaceCandidate; end: PlaceCandidate }): Promise<PlannedCyclingRoute> => {
@@ -130,18 +157,17 @@ export const createAmapCyclingRoutePlanner =
     }
 
     const payload = await readJson(response);
-    if (payload.status !== "1") {
-      const info =
-        typeof payload.info === "string" && payload.info.trim()
-          ? payload.info
-          : "unknown error";
-      logger?.error("route.plan.failed", { status: payload.status, info });
+    if (!isSuccessfulResponse(payload)) {
+      const info = readErrorMessage(payload);
+      logger?.error("route.plan.failed", {
+        status: payload.status,
+        errcode: payload.errcode,
+        info,
+      });
       throw new Error(`Amap cycling route planning failed: ${info}.`);
     }
 
-    const paths = Array.isArray(payload.route?.paths)
-      ? (payload.route.paths as AmapRoutePath[])
-      : [];
+    const paths = readPaths(payload);
     const path = paths[0];
     if (!path) {
       throw new Error("Amap cycling route returned no paths.");

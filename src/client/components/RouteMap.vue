@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { configureAmapSecurity } from "../amapSecurityConfig";
 import type { PlannedRoute } from "../api/publishingApi";
 
 defineProps<{
@@ -6,6 +7,7 @@ defineProps<{
 }>();
 
 const amapJsApiConfigured = Boolean(import.meta.env.VITE_AMAP_JS_API_KEY);
+configureAmapSecurity(import.meta.env.VITE_AMAP_SECURITY_JS_CODE);
 </script>
 
 <template>
