@@ -1,19 +1,39 @@
 <script setup lang="ts">
+import {
+  NConfigProvider,
+  NDialogProvider,
+  NLayout,
+  NLayoutContent,
+  NLayoutHeader,
+  NLoadingBarProvider,
+  NMessageProvider,
+} from "naive-ui";
 import { RouterView } from "vue-router";
 import AppNav from "./components/AppNav.vue";
+import { naiveThemeOverrides } from "./naiveTheme";
 </script>
 
 <template>
-  <main class="workspace">
-    <header class="topbar">
-      <div>
-        <h1>成都骑行路线发布工具</h1>
-        <p>路线规划与小红书发布工作台</p>
-      </div>
-      <AppNav />
-    </header>
-    <RouterView />
-  </main>
+  <NConfigProvider :theme-overrides="naiveThemeOverrides">
+    <NLoadingBarProvider>
+      <NDialogProvider>
+        <NMessageProvider>
+          <NLayout class="workspace">
+            <NLayoutHeader bordered class="topbar">
+              <div>
+                <h1>成都骑行路线发布工具</h1>
+                <p>路线规划与小红书发布工作台</p>
+              </div>
+              <AppNav />
+            </NLayoutHeader>
+            <NLayoutContent>
+              <RouterView />
+            </NLayoutContent>
+          </NLayout>
+        </NMessageProvider>
+      </NDialogProvider>
+    </NLoadingBarProvider>
+  </NConfigProvider>
 </template>
 
 <style>
@@ -27,52 +47,6 @@ body {
   margin: 0;
 }
 
-button,
-input,
-textarea {
-  font: inherit;
-}
-
-button {
-  min-height: 40px;
-  border: 1px solid #d9480f;
-  border-radius: 6px;
-  background: #e8590c;
-  color: #fff;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-button:disabled {
-  border-color: #c9cfd6;
-  background: #c9cfd6;
-  cursor: not-allowed;
-}
-
-input,
-textarea {
-  box-sizing: border-box;
-  width: 100%;
-  border: 1px solid #c9cfd6;
-  border-radius: 6px;
-  background: #fff;
-  color: #1f2933;
-  padding: 9px 10px;
-}
-
-textarea {
-  min-height: 96px;
-  resize: vertical;
-}
-
-label {
-  display: grid;
-  gap: 6px;
-  color: #334155;
-  font-size: 13px;
-  font-weight: 700;
-}
-
 .workspace {
   min-height: 100vh;
 }
@@ -82,7 +56,6 @@ label {
   align-items: center;
   justify-content: space-between;
   padding: 18px 24px;
-  border-bottom: 1px solid #d8dee6;
   background: #fff;
 }
 
@@ -97,27 +70,7 @@ label {
 }
 
 .app-nav {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.app-nav a {
-  display: inline-grid;
-  place-items: center;
-  min-height: 36px;
-  padding: 0 14px;
-  border: 1px solid #d8dee6;
-  border-radius: 6px;
-  color: #334155;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.app-nav a.active {
-  border-color: #d9480f;
-  background: #fff4ec;
-  color: #c2410c;
+  min-width: 240px;
 }
 
 .route-planner-view {
