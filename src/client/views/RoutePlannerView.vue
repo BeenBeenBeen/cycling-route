@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import { NAlert, NCode } from "naive-ui";
 import { useRouter } from "vue-router";
 import {
   generateGpx,
@@ -116,10 +117,9 @@ const onSendToPublisher = async () => {
 
 <template>
   <section class="route-planner-view">
-    <section v-if="errorMessage" class="error-banner">
-      <strong>{{ errorMessage }}</strong>
-      <pre v-if="errorDetail">{{ errorDetail }}</pre>
-    </section>
+    <NAlert v-if="errorMessage" class="error-banner" type="error" :title="errorMessage">
+      <NCode v-if="errorDetail" :code="errorDetail" word-wrap />
+    </NAlert>
 
     <section class="route-planner-map-stage" data-testid="route-planner-map-stage">
       <RouteMap :planned-route="plannedRoute" />

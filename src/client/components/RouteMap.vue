@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { NCard, NGi, NGrid, NStatistic, NText } from "naive-ui";
 import { configureAmapSecurity } from "../amapSecurityConfig";
 import { loadAmap, type AmapMap, type AmapNamespace, type AmapOverlay } from "../amapLoader";
 import type { PlannedRoute } from "../api/publishingApi";
@@ -124,26 +125,21 @@ watch(
         二维地图加载中，默认地点为成都市
       </div>
     </div>
-    <div v-if="plannedRoute" class="route-map-overlay">
-      <strong>{{ plannedRoute.routeName }}</strong>
-      <dl class="route-facts">
-        <div>
-          <dt>里程</dt>
-          <dd>{{ plannedRoute.distanceKm }} km</dd>
-        </div>
-        <div>
-          <dt>累计爬升</dt>
-          <dd>{{ plannedRoute.elevation.elevationGainM ?? 0 }} m</dd>
-        </div>
-        <div v-if="plannedRoute.estimatedDurationMin">
-          <dt>预计耗时</dt>
-          <dd>{{ plannedRoute.estimatedDurationMin }} 分钟</dd>
-        </div>
-      </dl>
-    </div>
-    <div v-else class="route-map-overlay route-map-overlay-empty">
-      <strong>成都市</strong>
-      <p>默认地图中心，生成路线后将在地图上绘制骑行路线。</p>
-    </div>
+    <NCard v-if="plannedRoute" class="route-map-overlay" :title="plannedRoute.routeName" size="small">
+      <NGrid :cols="3" :x-gap="8">
+        <NGi>
+          <NStatistic label="里程" :value="`${plannedRoute.distanceKm} km`" />
+        </NGi>
+        <NGi>
+          <NStatistic label="累计爬升" :value="`${plannedRoute.elevation.elevationGainM ?? 0} m`" />
+        </NGi>
+        <NGi v-if="plannedRoute.estimatedDurationMin">
+          <NStatistic label="预计耗时" :value="`${plannedRoute.estimatedDurationMin} 分钟`" />
+        </NGi>
+      </NGrid>
+    </NCard>
+    <NCard v-else class="route-map-overlay route-map-overlay-empty" title="成都市" size="small">
+      <NText depth="3">默认地图中心，生成路线后将在地图上绘制骑行路线。</NText>
+    </NCard>
   </section>
 </template>

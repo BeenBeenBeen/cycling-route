@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import { NAlert, NCode, NEmpty, NText } from "naive-ui";
 import {
   assistPublish,
   generateCover,
@@ -139,14 +140,15 @@ const onAssistPublish = () =>
 
 <template>
   <section class="publisher-view" data-testid="publisher-view">
-    <section v-if="errorMessage" class="error-banner">
-      <strong>{{ errorMessage }}</strong>
-      <pre v-if="errorDetail">{{ errorDetail }}</pre>
-    </section>
+    <NAlert v-if="errorMessage" class="error-banner" type="error" :title="errorMessage">
+      <NCode v-if="errorDetail" :code="errorDetail" word-wrap />
+    </NAlert>
 
-    <section v-if="!route" class="empty-panel publisher-empty">
-      尚未接收路线规划结果，可手工填写路线信息后生成发布内容
-    </section>
+    <NEmpty
+      v-if="!route"
+      class="publisher-empty"
+      description="尚未接收路线规划结果，可手工填写路线信息后生成发布内容"
+    />
 
     <div class="layout publisher-layout">
       <section class="main-column">
@@ -185,9 +187,9 @@ const onAssistPublish = () =>
           @save-markdown="onSaveMarkdown"
           @assist-publish="onAssistPublish"
         />
-        <section v-if="markdownPath" class="status-stack markdown-status">
+        <NText v-if="markdownPath" class="markdown-status" depth="3">
           Markdown：{{ markdownPath }}
-        </section>
+        </NText>
       </aside>
     </div>
   </section>
