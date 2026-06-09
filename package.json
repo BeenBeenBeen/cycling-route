@@ -1,0 +1,52 @@
+{
+  "name": "cycling-route",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "commonjs",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:client": "vite --host 127.0.0.1",
+    "dev:server": "tsx watch src/server/index.ts",
+    "build": "tsc --noEmit && vite build",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BeenBeenBeen/cycling-route.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/BeenBeenBeen/cycling-route/issues"
+  },
+  "homepage": "https://github.com/BeenBeenBeen/cycling-route#readme",
+  "dependencies": {
+    "@vitejs/plugin-vue": "^6.0.7",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "openai": "^6.39.1",
+    "playwright": "^1.60.0",
+    "sharp": "^0.34.5",
+    "undici": "^7.26.0",
+    "vue": "^3.5.35",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/supertest": "^7.2.0",
+    "@vue/test-utils": "^2.4.10",
+    "concurrently": "^10.0.0",
+    "jsdom": "^29.1.1",
+    "supertest": "^7.2.2",
+    "tsx": "^4.22.3",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.14",
+    "vitest": "^4.1.7"
+  }
+}
