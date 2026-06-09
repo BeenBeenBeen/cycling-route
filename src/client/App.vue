@@ -38,8 +38,8 @@ import { naiveThemeOverrides } from "./naiveTheme";
 
 <style>
 :root {
-  color: #1f2933;
-  background: #f4f6f8;
+  color: #14213d;
+  background: #f3f7f5;
   font-family: Inter, "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
 }
 
@@ -56,7 +56,7 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 18px 24px;
-  background: #fff;
+  background: linear-gradient(90deg, #ffffff 0%, #f3faf7 100%);
 }
 
 .topbar h1 {
@@ -66,7 +66,7 @@ body {
 
 .topbar p {
   margin: 4px 0 0;
-  color: #697586;
+  color: #64748b;
 }
 
 .app-nav {
@@ -128,7 +128,7 @@ body {
   aspect-ratio: 3 / 4;
   overflow: hidden;
   border-radius: 8px;
-  background: #eef2f6;
+  background: #e8f2ee;
 }
 
 .cover-frame .n-image,
@@ -150,9 +150,9 @@ body {
 .map-empty {
   position: relative;
   min-height: 180px;
-  border: 1px solid #d8dee6;
+  border: 1px solid #dbe7e1;
   border-radius: 6px;
-  background: #eef2f6;
+  background: #e8f2ee;
   overflow: hidden;
 }
 
@@ -162,9 +162,9 @@ body {
   bottom: 16px;
   z-index: 1;
   max-width: min(360px, calc(100% - 32px));
-  border: 1px solid #d8dee6;
+  border: 1px solid #dbe7e1;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(248, 251, 249, 0.94);
   color: #334155;
   padding: 10px 12px;
   font-size: 13px;
@@ -187,10 +187,10 @@ body {
   bottom: 16px;
   z-index: 2;
   width: min(420px, calc(100% - 32px));
-  border: 1px solid #d8dee6;
+  border: 1px solid #dbe7e1;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+  background: rgba(248, 251, 249, 0.95);
+  box-shadow: 0 14px 34px rgba(15, 118, 110, 0.14);
   padding: 14px;
 }
 
@@ -210,7 +210,7 @@ body {
 }
 
 .path-text {
-  color: #697586;
+  color: #64748b;
   font-size: 12px;
   overflow-wrap: anywhere;
 }
@@ -218,8 +218,8 @@ body {
 .error-banner {
   max-width: 1440px;
   margin: 16px auto 0;
-  color: #9b1c1c;
-  background: #fff5f5;
+  color: #991b1b;
+  background: #fff7ed;
 }
 
 .error-banner pre {
