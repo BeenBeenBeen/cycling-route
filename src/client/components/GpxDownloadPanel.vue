@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { NButton, NCard, NText } from "naive-ui";
+
 defineProps<{
   gpxPath: string;
   gpxUrl: string;
@@ -7,18 +9,20 @@ defineProps<{
 </script>
 
 <template>
-  <section class="gpx-panel">
-    <h2>GPX 路书</h2>
-    <a
+  <NCard title="GPX 路书" size="small">
+    <NButton
       data-testid="download-gpx"
+      tag="a"
       :href="gpxUrl || undefined"
       :aria-disabled="!gpxUrl || loading ? 'true' : 'false'"
-      :class="{ disabled: !gpxUrl || loading }"
+      :disabled="!gpxUrl || loading"
+      type="primary"
+      block
       download
     >
       {{ loading ? "生成中" : "下载 GPX" }}
-    </a>
-    <p v-if="gpxPath">路径：{{ gpxPath }}</p>
-    <p v-else>尚未生成 GPX</p>
-  </section>
+    </NButton>
+    <NText v-if="gpxPath" depth="3">路径：{{ gpxPath }}</NText>
+    <NText v-else depth="3">尚未生成 GPX</NText>
+  </NCard>
 </template>

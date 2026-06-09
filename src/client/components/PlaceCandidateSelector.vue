@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { NButton, NCard, NEmpty, NGi, NGrid, NList, NListItem, NTag } from "naive-ui";
 import type { PlaceCandidate } from "../api/publishingApi";
 
 defineProps<{
@@ -18,35 +19,40 @@ const labelFor = (candidate: PlaceCandidate) =>
 </script>
 
 <template>
-  <section class="candidate-selector">
-    <h2>候选地点</h2>
-    <div class="candidate-columns">
-      <div>
-        <h3>起点</h3>
-        <button
-          v-for="candidate in startCandidates"
-          :key="candidate.id"
-          type="button"
-          :data-testid="`start-candidate-${candidate.id}`"
-          :class="{ selected: selectedStart?.id === candidate.id }"
-          @click="emit('select-start', candidate)"
-        >
-          {{ labelFor(candidate) }}
-        </button>
-      </div>
-      <div>
-        <h3>终点</h3>
-        <button
-          v-for="candidate in endCandidates"
-          :key="candidate.id"
-          type="button"
-          :data-testid="`end-candidate-${candidate.id}`"
-          :class="{ selected: selectedEnd?.id === candidate.id }"
-          @click="emit('select-end', candidate)"
-        >
-          {{ labelFor(candidate) }}
-        </button>
-      </div>
-    </div>
-  </section>
+  <NCard title="候选地点" size="small">
+    <NGrid :cols="2" :x-gap="12" responsive="screen">
+      <NGi>
+        <NTag type="info" size="small">起点</NTag>
+        <NList v-if="startCandidates.length" class="candidate-list" bordered>
+          <NListItem v-for="candidate in startCandidates" :key="candidate.id">
+            <NButton
+              :data-testid="`start-candidate-${candidate.id}`"
+              :type="selectedStart?.id === candidate.id ? 'primary' : 'default'"
+              block
+              @click="emit('select-start', candidate)"
+            >
+              {{ labelFor(candidate) }}
+            </NButton>
+          </NListItem>
+        </NList>
+        <NEmpty v-else description="暂无起点候选" size="small" />
+      </NGi>
+      <NGi>
+        <NTag type="success" size="small">终点</NTag>
+        <NList v-if="endCandidates.length" class="candidate-list" bordered>
+          <NListItem v-for="candidate in endCandidates" :key="candidate.id">
+            <NButton
+              :data-testid="`end-candidate-${candidate.id}`"
+              :type="selectedEnd?.id === candidate.id ? 'primary' : 'default'"
+              block
+              @click="emit('select-end', candidate)"
+            >
+              {{ labelFor(candidate) }}
+            </NButton>
+          </NListItem>
+        </NList>
+        <NEmpty v-else description="暂无终点候选" size="small" />
+      </NGi>
+    </NGrid>
+  </NCard>
 </template>
