@@ -1,17 +1,27 @@
 <script setup lang="ts">
-defineProps<{
+import { NButton, NCard, NSpace, NText } from "naive-ui";
+
+withDefaults(defineProps<{
   loadingAction: string;
   hasPost: boolean;
   hasCover: boolean;
   canGenerateRoute: boolean;
   hasRoute: boolean;
+  canSendToPublisher?: boolean;
   markdownPath: string;
   publishStarted: boolean;
-}>();
+  showRouteActions?: boolean;
+  showPublishActions?: boolean;
+}>(), {
+  canSendToPublisher: false,
+  showRouteActions: true,
+  showPublishActions: true,
+});
 
 const emit = defineEmits<{
   generateRoute: [];
   generateGpx: [];
+  sendToPublisher: [];
   generatePost: [];
   generateCover: [];
   saveMarkdown: [];
@@ -29,29 +39,31 @@ const busyLabel: Record<string, string> = {
 </script>
 
 <template>
-  <section class="actions-panel">
-    <h2>流程操作</h2>
-    <button data-testid="generate-route" :disabled="!canGenerateRoute || !!loadingAction" @click="emit('generateRoute')">
-      {{ loadingAction === "generateRoute" ? busyLabel.generateRoute : "生成骑行路线" }}
-    </button>
-    <button data-testid="generate-gpx" :disabled="!hasRoute || !!loadingAction" @click="emit('generateGpx')">
-      {{ loadingAction === "generateGpx" ? busyLabel.generateGpx : "生成 GPX 路书" }}
-    </button>
-    <button data-testid="generate-post" :disabled="!!loadingAction" @click="emit('generatePost')">
-      {{ loadingAction === "generatePost" ? busyLabel.generatePost : "AI 生成" }}
-    </button>
-    <button data-testid="generate-cover" :disabled="!hasPost || !!loadingAction" @click="emit('generateCover')">
-      {{ loadingAction === "generateCover" ? busyLabel.generateCover : "生成封面海报" }}
-    </button>
-    <button data-testid="save-markdown" :disabled="!hasPost || !!loadingAction" @click="emit('saveMarkdown')">
-      {{ loadingAction === "saveMarkdown" ? busyLabel.saveMarkdown : "保存 Markdown" }}
-    </button>
-    <button data-testid="assist-publish" :disabled="!hasPost || !hasCover || !!loadingAction" @click="emit('assistPublish')">
-      {{ loadingAction === "assistPublish" ? busyLabel.assistPublish : "辅助发布" }}
-    </button>
-    <div class="status-stack">
-      <p v-if="markdownPath">Markdown：{{ markdownPath }}</p>
-      <p v-if="publishStarted">发布辅助已启动</p>
-    </div>
-  </section>
+  <NCard title="流程操作" size="small">
+    <NSpace vertical>
+      <NButton v-if="showRouteActions" data-testid="generate-route" type="primary" block :disabled="!canGenerateRoute || !!loadingAction" @click="emit('generateRoute')">
+        {{ loadingAction === "generateRoute" ? busyLabel.generateRoute : "生成骑行路线" }}
+      </NButton>
+      <NButton v-if="showRouteActions" data-testid="generate-gpx" block :disabled="!hasRoute || !!loadingAction" @click="emit('generateGpx')">
+        {{ loadingAction === "generateGpx" ? busyLabel.generateGpx : "生成 GPX 路书" }}
+      </NButton>
+      <NButton v-if="showRouteActions" data-testid="send-to-publisher" type="primary" ghost block :disabled="!canSendToPublisher || !!loadingAction" @click="emit('sendToPublisher')">
+        发送到小红书发布
+      </NButton>
+      <NButton v-if="showPublishActions" data-testid="generate-post" type="primary" block :disabled="!!loadingAction" @click="emit('generatePost')">
+        {{ loadingAction === "generatePost" ? busyLabel.generatePost : "AI 生成" }}
+      </NButton>
+      <NButton v-if="showPublishActions" data-testid="generate-cover" block :disabled="!hasPost || !!loadingAction" @click="emit('generateCover')">
+        {{ loadingAction === "generateCover" ? busyLabel.generateCover : "生成封面海报" }}
+      </NButton>
+      <NButton v-if="showPublishActions" data-testid="save-markdown" block :disabled="!hasPost || !!loadingAction" @click="emit('saveMarkdown')">
+        {{ loadingAction === "saveMarkdown" ? busyLabel.saveMarkdown : "保存 Markdown" }}
+      </NButton>
+      <NButton v-if="showPublishActions" data-testid="assist-publish" block :disabled="!hasPost || !hasCover || !!loadingAction" @click="emit('assistPublish')">
+        {{ loadingAction === "assistPublish" ? busyLabel.assistPublish : "辅助发布" }}
+      </NButton>
+      <NText v-if="markdownPath" depth="3">Markdown：{{ markdownPath }}</NText>
+      <NText v-if="publishStarted" type="success">发布辅助已启动</NText>
+    </NSpace>
+  </NCard>
 </template>

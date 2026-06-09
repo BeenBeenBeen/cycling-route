@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { NAlert, NCard, NEmpty, NImage, NSpin, NText } from "naive-ui";
+
 defineProps<{
   coverPath: string;
   loading: boolean;
@@ -7,14 +9,15 @@ defineProps<{
 </script>
 
 <template>
-  <section class="cover-panel">
-    <h2>封面预览</h2>
+  <NCard title="封面预览" size="small">
     <div class="cover-frame">
-      <div v-if="loading" class="cover-state">生成中</div>
-      <img v-else-if="coverPath" :src="coverPath" alt="封面海报" />
-      <div v-else class="cover-state">尚未生成封面</div>
+      <NSpin v-if="loading" description="生成中" />
+      <NImage v-else-if="coverPath" :src="coverPath" alt="封面海报" object-fit="cover" />
+      <NEmpty v-else description="尚未生成封面" />
     </div>
-    <p v-if="coverPath" class="path-text">{{ coverPath }}</p>
-    <p v-if="error" class="error-text">{{ error }}</p>
-  </section>
+    <NText v-if="coverPath" depth="3">{{ coverPath }}</NText>
+    <NAlert v-if="error" type="error" :show-icon="false">
+      {{ error }}
+    </NAlert>
+  </NCard>
 </template>

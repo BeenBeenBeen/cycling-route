@@ -5,6 +5,10 @@
 本项目重构为一个本地运行的 Web 应用，用于辅助生成成都周边骑行路线的小红书发布素材。用户录入路线信息后，系统完成以下工作：
 
 - V2.0 支持用户只输入起点和终点，并从高德地图候选地点中人工确认。
+- V2.0 前端拆成“路线规划”和“小红书发布”两个割裂界面，通过顶部导航进入。
+- 路线规划界面采用地图优先布局，参考 Strava 路线创建页，地图是第一视觉和主要操作区。
+- V2.0 前端 UI 统一使用 Naive UI 组件库，页面可见 UI 元素不得继续使用裸 `button`、`input`、`textarea`、`select`、`card`、`alert` 等自定义组件替代。
+- 小红书发布界面只负责路线事实确认、文案、封面、Markdown 和辅助发布。
 - V2.0 使用高德地图生成骑行路线，并在前端地图中渲染路线。
 - V2.0 按路线每 100m 采样，通过 Open-Elevation 批量查询海拔，计算累计爬升。
 - V2.0 生成可导入 Strava 的 GPX 路书，并提供本地下载。
@@ -19,6 +23,11 @@
 ## 2. 架构原则
 
 - 前端只负责表单、预览、编辑、状态展示和 API 调用，不承载业务规则。
+- 前端页面按 bounded context 拆分：`RoutePlannerView` 负责路线规划，`PublisherView` 负责小红书发布；跨界面只通过 `RoutePublishDraft` 数据包交接。
+- 前端 UI 组件统一采用 Naive UI。所有页面元素优先使用 `n-layout`、`n-menu`、`n-card`、`n-form`、`n-input`、`n-input-number`、`n-button`、`n-grid`、`n-alert`、`n-spin`、`n-image`、`n-tag`、`n-space`、`n-statistic` 等 Naive UI 组件表达。
+- 自定义 Vue 组件只封装业务语义和编排，不重新实现基础 UI 控件。允许例外仅限高德地图挂载容器、封面图片实际 `<img>` 渲染、GPX 下载锚点在 `n-button` 的 `tag="a"` 场景中使用。
+- 页面导航优先使用成熟路由库 `vue-router`，避免手写 URL 状态管理。
+- 路线发布草稿使用单用途 `routePublishDraftStore` 封装 `localStorage`，不把持久化逻辑散落在 Vue 组件中。
 - 领域模型使用 Zod 统一校验，包括路线输入、生成文案、封面请求和发布请求。
 - AI 调用、图片合成、文件保存、浏览器自动化都放在服务层，通过用例层调用。
 - 关键路线事实由用户输入和本地渲染控制，不交给图片模型生成。
@@ -31,14 +40,21 @@
 
 ```text
 Vue Client
-  RoutePlannerForm
-  PlaceCandidateSelector
-  RouteMap
-  GpxDownloadPanel
-  RouteForm
-  GeneratedPostEditor
-  CoverPreview
-  WorkflowActions
+  Naive UI Provider
+  AppNav (NMenu)
+  Router
+    RoutePlannerView
+      RoutePlannerForm (NForm, NInput, NButton)
+      PlaceCandidateSelector (NList, NButton, NTag)
+      RouteMap (AMap canvas + Naive UI overlay)
+      RouteSummaryBar (NGrid, NStatistic, NTag)
+      GpxDownloadPanel (NCard, NButton)
+    PublisherView
+      RouteForm (NForm, NInput, NInputNumber)
+      GeneratedPostEditor (NCard, NRadioGroup, NInput)
+      CoverPreview (NCard, NImage, NSpin)
+      WorkflowActions (NButton, NSpace)
+  routePublishDraftStore
         |
         | HTTP JSON
         v
@@ -77,17 +93,26 @@ Infrastructure Services
 src/
   client/
     App.vue
+    router.ts
+    naiveTheme.ts
+    stores/
+      routePublishDraftStore.ts
     api/
       publishingApi.ts
     components/
+      AppNav.vue
       RoutePlannerForm.vue
       PlaceCandidateSelector.vue
       RouteMap.vue
+      RouteSummaryBar.vue
       GpxDownloadPanel.vue
       RouteForm.vue
       GeneratedPostEditor.vue
       CoverPreview.vue
       WorkflowActions.vue
+    views/
+      RoutePlannerView.vue
+      PublisherView.vue
   server/
     app.ts
     index.ts
@@ -145,29 +170,34 @@ tests/
 
 ```mermaid
 flowchart TD
-  A[用户填写路线表单] --> B[Vue RouteForm]
-  B --> C[POST /api/generate-post]
-  C --> D[RouteInput Zod 校验]
-  D --> E[buildPostPrompt 构造提示词]
-  E --> F[DuckCoding Chat Completions API]
-  F --> G[GeneratedPost Zod 校验]
-  G --> H[返回 post 给前端]
-  H --> I[用户编辑标题 正文 标签 封面文案]
-  I --> J[POST /api/generate-cover]
-  J --> K[DuckCoding Images API 生成背景]
-  K --> L[Sharp 本地叠加路线事实]
-  L --> M[返回 coverPath 和 coverUrl]
-  I --> N[POST /api/save-markdown]
-  M --> N
-  N --> O[保存 data/posts/*.md]
-  I --> P[POST /api/assist-publish]
-  M --> P
-  P --> Q[Playwright 打开小红书发布页]
-  Q --> R[上传封面并填写标题 正文 标签]
-  R --> S[用户人工检查并发布]
+  A[RoutePlannerView 输入起终点] --> B[地点候选和路线规划]
+  B --> C[生成 PlannedRoute 和 GPX]
+  C --> D[用户点击发送到小红书发布]
+  D --> E[RoutePublishDraft 写入 localStorage]
+  E --> F[跳转 PublisherView]
+  F --> G[RouteForm 读取 routeFacts]
+  G --> H[POST /api/generate-post]
+  H --> I[RouteInput Zod 校验]
+  I --> J[buildPostPrompt 构造提示词]
+  J --> K[DuckCoding Chat Completions API]
+  K --> L[GeneratedPost Zod 校验]
+  L --> M[返回 post 给前端]
+  M --> N[用户编辑标题 正文 标签 封面文案]
+  N --> O[POST /api/generate-cover]
+  O --> P[DuckCoding Images API 生成背景]
+  P --> Q[Sharp 本地叠加路线事实]
+  Q --> R[返回 coverPath 和 coverUrl]
+  N --> S[POST /api/save-markdown]
+  R --> S
+  S --> T[保存 data/posts/*.md]
+  N --> U[POST /api/assist-publish]
+  R --> U
+  U --> V[Playwright 打开小红书发布页]
+  V --> W[上传封面并填写标题 正文 标签]
+  W --> X[用户人工检查并发布]
 ```
 
-V2.0 不推翻上述主流程，而是在 `RouteForm` 前增加路线规划阶段。路线规划阶段生成的里程、累计爬升、起终点、路线名和 GPX 路径会自动填充到现有路线表单与后续发布素材中。
+V2.0 不推翻文案、封面、Markdown 和辅助发布主流程，而是把路线规划阶段独立为 `RoutePlannerView`。路线规划阶段生成的 `PlannedRoute`、`RouteInput`、`gpxPath` 和 `gpxUrl` 通过 `RoutePublishDraft` 交接给 `PublisherView`。
 
 ### 5.1 V2.0 路线生成与 GPX 数据流图
 
@@ -186,11 +216,14 @@ flowchart TD
   K --> L[Open-Elevation 批量查询海拔]
   L --> M[计算累计爬升和海拔剖面]
   M --> N[返回 PlannedRoute]
-  N --> O[用户确认或修正路线事实]
-  O --> P[POST /api/generate-gpx]
-  P --> Q[写入 data/routes/*.gpx]
-  Q --> R[返回 gpxPath 和 gpxUrl]
-  O --> S[继续调用 /api/generate-post]
+  N --> O[RoutePlannerView 显示地图和摘要]
+  O --> P[用户确认或修正累计爬升]
+  P --> Q[POST /api/generate-gpx]
+  Q --> R[写入 data/routes/*.gpx]
+  R --> S[返回 gpxPath 和 gpxUrl]
+  S --> T[发送到小红书发布]
+  T --> U[写入 RoutePublishDraft]
+  U --> V[PublisherView 读取草稿]
 ```
 
 V2.0 数据流约束：
@@ -199,6 +232,7 @@ V2.0 数据流约束：
 - V2.0 暂不支持途经点，领域模型预留 `waypoints` 字段但接口默认传空数组。
 - 高德地图展示使用 GCJ-02；GPX、Open-Elevation、Strava 导入使用 WGS84。
 - Open-Elevation 按每 100m 采样，批量查询默认每批 100 个点，避免逐点请求。
+- 累计爬升按沿路线采样点逐段累加正向海拔变化，不使用终点海拔减起点海拔。
 - Open-Elevation 失败时不阻断路线生成，接口返回 `elevation.status = "failed"`，前端提示用户手工填写累计爬升后再生成文案或 GPX。
 - GPX 文件必须包含 `<ele>`，只有海拔查询失败且用户确认继续时才允许生成无 `<ele>` 的降级 GPX。
 
@@ -378,7 +412,26 @@ const response = await client.images.generate({
 
 V2.0 中 `RouteInput` 仍是文案和封面链路的输入模型，但它优先由 `PlannedRoute.routeFacts` 自动填充。用户可以在前端继续编辑 `difficulty`、`roadType`、`highlights`、`warnings`、`supplyPoints` 等字段。
 
-### 7.6 GeneratedPost
+### 7.6 RoutePublishDraft
+
+`RoutePublishDraft` 是前端路线规划界面和小红书发布界面的交接模型。它不需要新增后端 API，默认由前端 `routePublishDraftStore` 写入 `localStorage`。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---:|---:|---|
+| `plannedRoute` | PlannedRoute | 是 | 路线规划完整结果 |
+| `routeFacts` | RouteInput | 是 | 发布表单初始路线事实 |
+| `gpxPath` | string | 否 | 本地 GPX 文件路径 |
+| `gpxUrl` | string | 否 | 前端 GPX 下载地址 |
+| `updatedAt` | string | 是 | ISO 时间戳，用于判断草稿新旧 |
+
+约束：
+
+- 只有用户点击“发送到小红书发布”时才写入。
+- `PublisherView` 读取草稿后填充 `RouteForm`。
+- 如果 `PublisherView` 已存在用户编辑内容，不得静默覆盖，应弹出确认或保留当前内容。
+- `localStorage` 只保存非敏感路线和发布草稿，不保存 API key、cookie、账号密码或小红书登录状态。
+
+### 7.7 GeneratedPost
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---:|---:|---|
@@ -395,90 +448,160 @@ V2.0 中 `RouteInput` 仍是文案和封面链路的输入模型，但它优先�
 
 ### 8.1 设计目标
 
-前端是本地工作台界面，不做营销落地页。用户进入页面后应直接看到路线录入、生成结果和操作按钮。界面应服务于反复录入、检查、编辑和发布辅助，重点是清晰、密集、稳定和可扫描。
+前端是本地工作台界面，不做营销落地页。V2.0 将路线规划和小红书发布拆成两个割裂界面，避免地图工具和内容编辑互相干扰。两个界面通过顶部导航进入，并通过 `RoutePublishDraft` 明确交接数据。
 
 设计目标：
 
+- 路线规划界面参考 Strava 路线创建页，地图是第一视觉和主要操作区。
+- 小红书发布界面专注路线事实确认、文案编辑、封面预览、Markdown 保存和辅助发布。
 - 让用户只输入起点和终点，即可生成路线、地图预览、累计爬升和 GPX 路书。
-- 让用户快速确认或修正路线事实。
+- 让用户通过明确动作把路线规划结果发送到小红书发布界面。
 - 让 AI 生成结果可预览、可编辑、可保存。
 - 明确展示当前流程状态，避免重复点击导致重复消耗上游 AI 额度。
-- 让封面生成和发布辅助成为显式动作。
-- 所有错误都在当前页面可见，并保留后端终端日志作为排查依据。
+- 所有错误都在所属界面可见，并保留后端终端日志作为排查依据。
 
 ### 8.2 页面布局
 
-推荐使用两栏工作台布局：
+推荐使用路由化双界面布局：
 
 ```text
 ┌──────────────────────────────────────────────────────────────┐
-│ 顶部标题栏：成都骑行路线发布工具 / 当前状态 / 健康检查状态      │
-├──────────────────────────────────────┬───────────────────────┤
-│ 左侧主区域                             │ 右侧操作侧栏            │
-│                                      │                       │
-│ RoutePlannerForm 起终点输入            │ RouteMap 路线地图       │
-│ PlaceCandidateSelector 候选确认        │ CoverPreview 封面预览   │
-│ RouteForm 路线事实编辑表单              │ GpxDownloadPanel 路书    │
-│                                      │ WorkflowActions 按钮组  │
-│ GeneratedPostEditor 生成内容编辑区      │ Markdown 保存状态       │
-│                                      │ 发布辅助状态            │
-└──────────────────────────────────────┴───────────────────────┘
+│ AppNav：路线规划 | 小红书发布 | 后续扩展入口                  │
+├──────────────────────────────────────────────────────────────┤
+│ /route-planner                                                │
+│  全屏或近全屏地图                                             │
+│  左侧浮层：起终点搜索、候选确认、生成路线                     │
+│  底部浮层：距离、累计爬升、耗时、GPX 状态和下载               │
+│  右上角：重新规划、生成 GPX、发送到小红书发布                 │
+├──────────────────────────────────────────────────────────────┤
+│ /publisher                                                    │
+│  路线事实表单 | 文案编辑器 | 封面预览 | 发布动作              │
+└──────────────────────────────────────────────────────────────┘
 ```
 
 移动端或窄屏时改为单列：
 
 ```text
-顶部标题栏
-RoutePlannerForm
-PlaceCandidateSelector
-RouteMap
-RouteForm
-WorkflowActions
-GpxDownloadPanel
-CoverPreview
-GeneratedPostEditor
-状态提示
+AppNav
+/route-planner:
+  地图
+  路线面板
+  路线摘要
+  GPX 下载
+/publisher:
+  路线事实表单
+  文案编辑
+  封面预览
+  保存和辅助发布
 ```
+
+### 8.2.1 Naive UI 组件库约束
+
+前端页面元素必须统一迁移到 Naive UI，避免继续维护一套自定义表单、按钮、卡片、提示和布局样式。迁移目标不是只安装组件库，而是让所有可见页面控件都由 Naive UI 提供。
+
+依赖和入口：
+
+- 新增依赖：`naive-ui`。
+- `main.ts` 或 `App.vue` 根部挂载 `n-config-provider`、`n-message-provider`、`n-dialog-provider` 和 `n-loading-bar-provider`。
+- 项目新增 `src/client/naiveTheme.ts`，集中定义主题覆盖、主色、圆角、字体、按钮和卡片样式。
+- `App.vue` 只保留全局页面骨架和必要地图尺寸样式，不再定义通用 `button`、`input`、`textarea`、`card` 样式。
+
+组件替换规则：
+
+| 当前语义 | Naive UI 组件 |
+|---|---|
+| 页面骨架 | `n-layout`、`n-layout-header`、`n-layout-content` |
+| 顶部导航 | `n-menu`，通过 `vue-router` 驱动选中项 |
+| 表单 | `n-form`、`n-form-item`、`n-input`、`n-input-number`、`n-dynamic-tags` |
+| 操作按钮 | `n-button`、`n-button-group`、`n-space` |
+| 信息卡片 | `n-card`、`n-thing`、`n-list`、`n-list-item` |
+| 错误提示 | `n-alert`，详情用 `n-collapse` 或 `n-code` |
+| 加载状态 | `n-spin`、`n-skeleton`、`n-loading-bar` |
+| 路线摘要 | `n-grid`、`n-gi`、`n-statistic`、`n-tag` |
+| 标题选择 | `n-radio-group`、`n-radio` |
+| 封面图片 | `n-image`，外层使用 `n-card` |
+| GPX 下载 | `n-button tag="a"` |
+
+允许例外：
+
+- 高德地图必须保留一个真实 DOM 容器给 JS API 挂载，但容器外层状态、错误、浮层和统计信息仍使用 Naive UI。
+- 路线 polyline、marker、地图控件由高德 JS API 管理，不用 Naive UI 替代。
+- 语义化结构元素如页面根 `section` 可以保留，但不得承担按钮、输入框、卡片、提示条等视觉组件职责。
+
+禁止规则：
+
+- 不再新增裸 `button`、`input`、`textarea`、`select` 作为页面控件。
+- 不再新增自定义 `.actions-panel`、`.form-section`、`.editor-panel`、`.cover-panel` 等替代 Naive UI 卡片和布局的样式。
+- 不在业务组件里直接堆大量 CSS 做组件库已有能力。
 
 ### 8.3 组件职责
 
 | 组件 | 职责 | 不负责 |
 |---|---|---|
-| `App.vue` | 维护页面状态、串联工作流、处理错误和加载状态 | 具体字段渲染、业务校验细节 |
+| `App.vue` | 挂载导航和路由出口 | 串联具体业务流程 |
+| `AppNav.vue` | 展示顶部导航、当前界面高亮和入口扩展位 | 保存业务状态、调用 API |
+| `router.ts` | 定义 `/route-planner`、`/publisher` 和默认跳转 | 页面业务逻辑 |
+| `RoutePlannerView.vue` | 维护路线规划上下文、调用地点搜索、路线生成和 GPX API | 小红书文案编辑、封面生成 |
+| `PublisherView.vue` | 读取 `RoutePublishDraft`，维护发布上下文，调用文案、封面、保存和辅助发布 API | 地点搜索、路线规划 |
+| `routePublishDraftStore.ts` | 读写最近一次路线发布草稿，封装 `localStorage` | 校验后端领域模型、保存敏感信息 |
 | `RoutePlannerForm.vue` | 输入起点和终点文本，触发候选地点查询 | 调用高德 SDK、保存 GPX |
 | `PlaceCandidateSelector.vue` | 展示起点和终点候选，记录用户确认的点位 | 自动选择模糊地点 |
 | `RouteMap.vue` | 用高德 JS API 展示规划路线、起终点和路线状态 | 计算 GPX 坐标、调用后端 |
 | `GpxDownloadPanel.vue` | 展示 GPX 生成状态、下载链接和 Strava 导入提示 | 生成路线或编辑文案 |
+| `RouteSummaryBar.vue` | 展示距离、累计爬升、耗时、海拔状态和 GPX 状态 | 调用 API、修改路线事实 |
 | `RouteForm.vue` | 展示并编辑路线事实，将 textarea 转为字符串数组 | 调用 API、生成提示词 |
 | `GeneratedPostEditor.vue` | 展示并编辑 AI 生成结果、选择标题 | 调用上游 AI、保存文件 |
 | `CoverPreview.vue` | 展示封面图、封面加载状态、封面错误 | 生成封面 |
 | `WorkflowActions.vue` | 展示操作按钮和禁用状态 | 保存业务状态 |
 | `publishingApi.ts` | 封装前端 API 请求、统一解析错误 | 页面渲染 |
 
+Naive UI 迁移后，以上组件仍保留业务语义命名，但内部必须使用 Naive UI 基础组件表达页面元素。组件职责边界不因为 UI 库迁移而改变：API 调用仍在视图层编排，表单组件只负责输入和输出结构化值，业务规则仍留在服务端领域模型和用例中。
+
 ### 8.4 V2.0 路线规划区
 
-路线规划区位于页面顶部，是 V2.0 的主入口。
+路线规划区位于 `/route-planner`，采用地图优先布局。该界面不展示小红书文案编辑器、不展示封面预览，也不提供 Markdown 或辅助发布按钮。
 
 | 区块 | 控件 | 说明 |
 |---|---|---|
-| 起终点输入 | 两个文本 input | 只输入起点和终点，不要求用户填经纬度 |
-| 候选地点 | 两组单选列表 | 展示高德返回的名称、地址、区县和城市 |
-| 生成路线 | 主按钮 | 用户确认起终点后调用 `/api/generate-route` |
-| 路线地图 | 高德地图容器 | 展示起点、终点和骑行路线 |
-| 路线摘要 | 数字指标 | 展示里程、估算耗时、累计爬升、海拔状态 |
-| GPX 路书 | 下载按钮 | 调用 `/api/generate-gpx` 后下载 GPX |
+| 地图主区域 | 高德地图容器 | 全屏或近全屏展示成都周边地图，生成后绘制骑行路线 |
+| 左侧浮层路线面板 | `n-card` + `n-form` + `n-input` + `n-list` | 表单浮在地图上，便于边看地图边规划 |
+| 底部路线摘要条 | `n-card` + `n-grid` + `n-statistic` | 参考 Strava 的路线指标呈现方式 |
+| 右上角操作区 | `n-card` + `n-space` + `n-button` | 所有动作都必须显式触发 |
 
 交互规则：
 
-- 起点或终点文本变化后，原候选选择、规划路线、GPX、文案和封面状态都应标记为过期。
+- 起点或终点文本变化后，原候选选择、规划路线和 GPX 状态都应标记为过期。
 - 用户必须人工确认起点和终点候选，不能默认使用第一条候选直接规划。
-- 路线生成成功后，系统自动填充 `RouteForm` 中的路线名称、起点、终点、里程、累计爬升和预计耗时。
+- 路线生成成功后，`RoutePlannerView` 保存 `plannedRoute` 和 `plannedRoute.routeFacts`。
 - 海拔查询失败时，累计爬升字段保持可编辑，并显示海拔失败详情。
 - GPX 下载按钮只有在路线已生成后启用；海拔失败时需用户确认是否生成无海拔 GPX。
+- “发送到小红书发布”只有在已有 `plannedRoute` 时启用；如果已生成 GPX，则草稿一并携带 `gpxPath` 和 `gpxUrl`。
+- 发送成功后写入 `RoutePublishDraft`，再跳转到 `/publisher`。
 
-### 8.5 路线表单设计
+### 8.5 小红书发布区
 
-路线表单分组展示，避免所有字段堆在一起。
+小红书发布区位于 `/publisher`，采用内容编辑工作台布局。该界面不承担地点搜索、路线规划和地图操作职责。
+
+`PublisherView` 进入时：
+
+- 优先读取 `routePublishDraftStore` 中最近一次草稿。
+- 如果存在草稿，使用 `draft.routeFacts` 初始化 `RouteForm`，并保留 `draft.gpxPath`。
+- 如果不存在草稿，展示空状态，提示用户先到路线规划界面生成路线，或手工填写路线事实。
+- 如果当前发布页已有编辑内容且用户再次导入路线草稿，不得静默覆盖。
+
+发布区包含：
+
+| 区块 | 组件 | 说明 |
+|---|---|---|
+| 路线事实 | `RouteForm.vue` | 展示并编辑由路线规划输出的发布事实 |
+| 文案生成和编辑 | `GeneratedPostEditor.vue` | 生成后可编辑标题、正文、攻略、彩蛋、标签、封面文字和图片提示词 |
+| 封面预览 | `CoverPreview.vue` | 展示封面生成状态和结果 |
+| 发布动作 | `WorkflowActions.vue` | 生成文案、生成封面、保存 Markdown、辅助发布 |
+| GPX 引用 | `GpxDownloadPanel.vue` 或轻量链接 | 展示从草稿带来的 GPX 下载入口 |
+
+### 8.6 路线表单设计
+
+路线表单只出现在小红书发布界面。它按分组展示，避免所有字段堆在一起。
 
 | 分组 | 字段 |
 |---|---|
@@ -499,8 +622,8 @@ GeneratedPostEditor
 
 数字字段使用 number input：
 
-- `distanceKm`：允许小数，最小值大于 0。
-- `elevationGainM`：整数，最小值 0。
+- `distanceKm`：使用 `n-input-number`，允许小数，最小值大于 0。
+- `elevationGainM`：使用 `n-input-number`，整数，最小值 0。
 
 V2.0 自动填充字段：
 
@@ -513,7 +636,9 @@ V2.0 自动填充字段：
 | 累计爬升 | Open-Elevation 采样后计算 |
 | 预计耗时 | 高德骑行路线估算耗时 |
 
-### 8.6 生成内容编辑区
+用户可以继续编辑上述字段。最终用于文案、封面、Markdown 的值以 `PublisherView` 中当前表单值为准，不回写路线规划界面的 `plannedRoute`。
+
+### 8.7 生成内容编辑区
 
 `GeneratedPostEditor` 在 `/api/generate-post` 成功后显示。内容必须允许用户编辑，避免 AI 生成结果未经审核直接进入保存或发布流程。
 
@@ -527,9 +652,9 @@ V2.0 自动填充字段：
 | 封面文字 | input | `coverTitle` 和 `coverSubtitle` |
 | 图片提示词 | textarea | 可编辑 `imagePrompt`，用于封面背景生成 |
 
-### 8.7 封面预览区
+### 8.8 封面预览区
 
-`CoverPreview` 固定在右侧侧栏顶部，便于用户在生成和编辑过程中持续看到封面状态。
+`CoverPreview` 位于小红书发布界面，便于用户在生成和编辑过程中持续看到封面状态。
 
 | 状态 | 展示 |
 |---|---|
@@ -546,13 +671,14 @@ V2.0 自动填充字段：
 背景：浅灰
 ```
 
-### 8.8 操作按钮和启用规则
+### 8.9 操作按钮和启用规则
 
 | 按钮 | 启用条件 | 调用 API | 成功后 |
 |---|---|---|---|
 | 查询候选地点 | 起点和终点文本非空，且无其他请求进行中 | `/api/search-places` | 展示起终点候选列表 |
 | 生成骑行路线 | 起点和终点候选均已确认，且无其他请求进行中 | `/api/generate-route` | 展示地图路线，填充路线事实 |
 | 生成 GPX 路书 | 已有 `PlannedRoute`，且无其他请求进行中 | `/api/generate-gpx` | 展示 `gpxPath` 和下载链接 |
+| 发送到小红书发布 | 已有 `PlannedRoute`，且无其他请求进行中 | 无后端 API | 写入 `RoutePublishDraft` 并跳转 `/publisher` |
 | AI 生成 | 路线表单基础校验通过，且无其他请求进行中 | `/api/generate-post` | 填充生成内容，清空旧封面和 Markdown 路径 |
 | 生成封面海报 | 已有 `GeneratedPost`，且无其他请求进行中 | `/api/generate-cover` | 更新 `coverPath` |
 | 保存 Markdown | 已有 `GeneratedPost`，且无其他请求进行中 | `/api/save-markdown` | 展示 `markdownPath` |
@@ -560,9 +686,9 @@ V2.0 自动填充字段：
 
 所有按钮请求期间必须禁用，避免重复请求造成重复扣费或重复写文件。
 
-### 8.9 页面状态模型
+### 8.10 页面状态模型
 
-前端推荐维护以下状态：
+前端状态按视图拆分，避免 `App.vue` 成为大而全状态容器。
 
 ```ts
 type LoadingAction =
@@ -575,7 +701,7 @@ type LoadingAction =
   | "saveMarkdown"
   | "assistPublish";
 
-type PageState = {
+type RoutePlannerState = {
   placeQuery: { start: string; end: string };
   startCandidates: PlaceCandidate[];
   endCandidates: PlaceCandidate[];
@@ -584,6 +710,12 @@ type PageState = {
   plannedRoute: PlannedRoute | null;
   gpxPath: string;
   gpxUrl: string;
+  loadingAction: LoadingAction;
+  errorMessage: string;
+  errorDetail?: string;
+};
+
+type PublisherState = {
   route: RouteFormValue;
   generatedPost: GeneratedPost | null;
   selectedTitle: string;
@@ -595,16 +727,26 @@ type PageState = {
 };
 ```
 
+`RoutePublishDraft` 存储 API：
+
+```ts
+type RoutePublishDraftStore = {
+  read: () => RoutePublishDraft | null;
+  write: (draft: RoutePublishDraft) => void;
+  clear: () => void;
+};
+```
+
 错误展示规则：
 
-- `errorMessage` 显示在页面顶部。
+- `errorMessage` 显示在当前视图内。
 - `errorDetail` 可折叠展示，便于复制排查。
 - API 返回 `detail` 时必须展示。
 - 不在前端展示 API key、authorization、cookie 等敏感信息。
 
-### 8.10 视觉风格
+### 8.11 视觉风格
 
-界面应偏工作台，不做大面积 hero 或营销视觉。
+整体界面应偏工作台，不做营销视觉。路线规划页允许地图全屏化和工具浮层，但不得做装饰性 hero。
 
 建议风格：
 
@@ -613,12 +755,14 @@ type PageState = {
 - 主按钮使用骑行/运动感的橙色或红橙色。
 - 表单布局紧凑，字段标签清晰。
 - 卡片圆角不超过 8px。
+- 路线规划页地图为主，浮层面板应紧凑、半透明或白底低阴影，不遮挡主要路线。
+- 发布页信息密度高，优先使用分组表单和稳定预览区域。
 - 避免大面积渐变、装饰性图形和纯视觉占位。
 - 文字大小按工作台密度控制，标题不过度放大。
 
 封面海报不受工作台 UI 的克制风格限制。封面应参考骑行俱乐部小红书活动海报：全屏实拍感背景、强对比白色大标题、顶部小品牌/路线标识、中部手绘路线线条、底部路线数据。封面不得使用深色信息卡片包裹全部文字。
 
-### 8.11 前端 API 错误处理
+### 8.12 前端 API 错误处理
 
 `publishingApi.ts` 统一处理响应：
 
@@ -633,6 +777,27 @@ detail 存在：显示 error + detail
 detail 不存在：显示 error
 error 不存在：显示“请求失败”
 ```
+
+### 8.13 Naive UI 迁移顺序
+
+Naive UI 迁移必须按小步提交执行，避免一次性替换所有页面导致路线规划和发布流程回归。
+
+建议顺序：
+
+1. 安装 `naive-ui`，接入根级 provider 和 `naiveTheme.ts`，保留现有页面行为不变。
+2. 迁移 `App.vue` 和 `AppNav.vue`：使用 `n-layout`、`n-layout-header`、`n-layout-content`、`n-menu`，移除通用裸按钮和输入框样式。
+3. 迁移路线规划页：`RoutePlannerForm`、`PlaceCandidateSelector`、`RouteSummaryBar`、`GpxDownloadPanel`、`WorkflowActions` 使用 Naive UI；`RouteMap` 仅保留高德地图挂载容器作为例外。
+4. 迁移小红书发布页：`RouteForm`、`GeneratedPostEditor`、`CoverPreview` 使用 Naive UI 表单、卡片、图片、单选和标签组件。
+5. 清理遗留 CSS：删除用于模拟组件库的 `.form-section`、`.actions-panel`、`.editor-panel`、`.cover-panel` 等样式，仅保留页面布局、地图尺寸和少量业务特定样式。
+6. 补充或更新测试：测试仍断言业务行为和数据流，不依赖 Naive UI 内部 DOM 结构；必要时使用稳定 `data-testid` 包裹业务组件。
+
+验收标准：
+
+- `npm test` 和 `npm run build` 通过。
+- 页面可见表单、按钮、卡片、提示、列表、统计、图片预览均由 Naive UI 组件渲染。
+- 地图默认定位成都市，路线生成后仍能绘制高德二维路线。
+- 发布页仍能读取 `RoutePublishDraft`，生成文案、封面、Markdown 和辅助发布。
+- 无新增裸页面控件作为交互元素。
 
 ## 9. API 定义
 
@@ -1094,7 +1259,7 @@ type ApiError = {
 | useCases | 地点搜索、路线生成、海拔失败降级、GPX 生成、AI 生成等用例编排 |
 | routes | HTTP 状态码、请求校验、响应格式、GPX 下载路径安全 |
 | services | 高德请求包装、坐标转换、路线采样、Open-Elevation 批量查询、累计爬升、GPX 写入、DuckCoding、Sharp、Markdown、Playwright |
-| client | 候选地点确认、地图状态、GPX 下载状态、表单转换、按钮状态、错误展示、生成结果编辑 |
+| client | 导航路由、路线发布草稿读写、候选地点确认、地图状态、GPX 下载状态、表单转换、按钮状态、错误展示、生成结果编辑 |
 
 测试原则：
 
@@ -1194,6 +1359,8 @@ type ApiError = {
 
 - `AMAP_API_KEY`
 - `AMAP_JS_API_KEY`
+- `VITE_AMAP_JS_API_KEY`
+- `VITE_AMAP_SECURITY_JS_CODE`
 - `DUCKCODING_TEXT_API_KEY`
 - `DUCKCODING_IMAGE_API_KEY`
 - HTTP headers 中的 `authorization`
@@ -1267,7 +1434,9 @@ API 错误返回：
 |---|---:|---|
 | `PORT` | 否 | 后端端口，默认 `8787` |
 | `AMAP_API_KEY` | 是 | 高德 Web Service API key，用于地点搜索和骑行路线规划 |
-| `AMAP_JS_API_KEY` | 是 | 高德 JS API key，用于前端地图渲染 |
+| `AMAP_JS_API_KEY` | 是 | 高德 JS API key，用于服务端配置检查和前端配置对齐 |
+| `VITE_AMAP_JS_API_KEY` | 是 | 暴露给前端的高德 JS API key，用于地图渲染 |
+| `VITE_AMAP_SECURITY_JS_CODE` | 是 | 高德 JS API 安全密钥，用于前端地图加载 |
 | `OPEN_ELEVATION_BASE_URL` | 否 | Open-Elevation 地址，默认公共 API |
 | `ELEVATION_SAMPLE_INTERVAL_M` | 否 | 海拔采样间隔，默认 `100` |
 | `ELEVATION_BATCH_SIZE` | 否 | Open-Elevation 批量查询点数，默认 `100` |
