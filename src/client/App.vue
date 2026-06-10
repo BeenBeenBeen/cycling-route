@@ -46,15 +46,23 @@ import { naiveThemeOverrides } from "./naiveTheme";
   font-family: Inter, "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
 }
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 html,
 body,
 #app {
   height: 100%;
+  max-width: 100%;
 }
 
 body {
   margin: 0;
   overflow: hidden;
+  overflow-x: hidden;
 }
 
 .workspace {
@@ -149,6 +157,7 @@ body {
   display: grid;
   align-content: start;
   gap: 16px;
+  min-width: 0;
 }
 
 .route-map,
@@ -315,38 +324,167 @@ body {
   .topbar {
     display: grid;
     gap: 12px;
+    padding: 14px 16px;
+  }
+
+  .app-nav {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .app-nav .n-menu,
+  .app-nav .v-overflow {
+    width: 100%;
+  }
+
+  .app-nav .n-menu-item {
+    flex: 1 1 50%;
+  }
+
+  .app-nav .n-menu-item-content-header {
+    width: 100%;
+    text-align: center;
   }
 
   .route-planner-view {
     grid-template-columns: 1fr;
     height: auto;
+    padding: 12px;
   }
 
-  .route-planner-map-stage,
-  .route-planner-map-stage .route-map,
-  .route-planner-map-stage .map-empty {
+  .route-planner-map-stage {
+    order: 2;
     min-height: 520px;
   }
 
   .route-planner-panel {
-    max-height: none;
-    overflow: visible;
+    display: contents;
+  }
+
+  .route-planner-form-section {
+    order: 1;
+  }
+
+  .route-planner-summary-section {
+    order: 3;
+  }
+
+  .route-planner-gpx-section {
+    order: 4;
   }
 
   .layout {
     grid-template-columns: 1fr;
+    padding: 12px;
   }
 
   .side-column {
-    order: -1;
+    order: initial;
   }
 }
 
 @media (max-width: 640px) {
+  .topbar {
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .topbar h1 {
+    font-size: 18px;
+    line-height: 1.3;
+  }
+
+  .topbar p {
+    margin-top: 2px;
+    font-size: 12px;
+  }
+
+  .app-nav .n-menu-item-content {
+    padding: 0 10px !important;
+  }
+
+  .app-nav .n-menu-item-content-header {
+    overflow: visible !important;
+    text-overflow: clip !important;
+  }
+
+  .route-planner-view,
+  .layout {
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .main-column,
+  .side-column {
+    gap: 8px;
+  }
+
   .route-planner-map-stage,
   .route-planner-map-stage .route-map,
   .route-planner-map-stage .map-empty {
-    min-height: 420px;
+    min-height: 0;
+  }
+
+  .route-map {
+    gap: 8px;
+    overflow: visible;
+  }
+
+  .route-map-canvas-stage {
+    display: grid;
+    gap: 8px;
+  }
+
+  .route-map-canvas-stage > .map-shell {
+    height: 300px;
+  }
+
+  .route-map-overlay {
+    position: static;
+    width: 100%;
+  }
+
+  .route-map-overlay,
+  .elevation-profile-overlay {
+    padding: 10px;
+    box-shadow: 0 8px 22px rgba(15, 118, 110, 0.12);
+  }
+
+  .map-state {
+    left: 8px;
+    bottom: 8px;
+    max-width: calc(100% - 16px);
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .route-planner-view .n-button,
+  .publisher-view .n-button {
+    min-height: 40px;
+  }
+
+  .route-planner-view .n-statistic-value__content {
+    font-size: 18px;
+  }
+
+  .distance-metrics-detail div {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .cover-frame {
+    max-height: 70vh;
+  }
+
+  .publisher-empty,
+  .markdown-status {
+    margin-top: 8px;
+    padding: 8px;
+  }
+
+  .publisher-layout .n-card,
+  .route-planner-view .n-card {
+    min-width: 0;
   }
 }
 </style>

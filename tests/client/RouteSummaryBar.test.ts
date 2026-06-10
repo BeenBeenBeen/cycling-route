@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { mount } from "@vue/test-utils";
+import { NGrid } from "naive-ui";
 import { describe, expect, it } from "vitest";
 import RouteSummaryBar from "../../src/client/components/RouteSummaryBar.vue";
 
@@ -20,6 +21,14 @@ const plannedRoute = {
 };
 
 describe("RouteSummaryBar", () => {
+  it("uses a single-column summary grid on phones", () => {
+    const wrapper = mount(RouteSummaryBar, {
+      props: { plannedRoute: null, gpxPath: "", gpxUrl: "", loading: false },
+    });
+
+    expect(wrapper.getComponent(NGrid).props("cols")).toBe("1 s:2");
+  });
+
   it("renders empty route metrics before planning", () => {
     const wrapper = mount(RouteSummaryBar, {
       props: { plannedRoute: null, gpxPath: "", gpxUrl: "", loading: false },

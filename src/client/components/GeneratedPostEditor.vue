@@ -48,8 +48,8 @@ const updateLines = (
 <template>
   <NCard title="生成内容" size="small">
     <NEmpty v-if="!post" description="等待生成" />
-    <NGrid v-else :cols="2" :x-gap="12" :y-gap="12" responsive="screen">
-      <NGi :span="2">
+    <NGrid v-else cols="1 s:2" :x-gap="12" :y-gap="12" responsive="screen">
+      <NGi span="1 s:2">
         <NFormItem label="标题候选">
           <NRadioGroup
             :value="selectedTitle"
@@ -93,7 +93,7 @@ const updateLines = (
           <NInput :value="post.coverSubtitle" @update:value="(value) => updateField(post, 'coverSubtitle', value)" />
         </NFormItem>
       </NGi>
-      <NGi :span="2">
+      <NGi span="1 s:2">
         <NFormItem label="图片提示词">
           <NInput :value="post.imagePrompt" type="textarea" :autosize="{ minRows: 4 }" @update:value="(value) => updateField(post, 'imagePrompt', value)" />
         </NFormItem>
@@ -101,3 +101,16 @@ const updateLines = (
     </NGrid>
   </NCard>
 </template>
+
+<style scoped>
+:deep(.n-radio-group) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+:deep(.n-radio) {
+  max-width: 100%;
+  white-space: normal;
+}
+</style>

@@ -174,7 +174,7 @@ watch(
         </div>
       </div>
       <NCard v-if="plannedRoute" class="route-map-overlay" :title="plannedRoute.routeName" size="small">
-        <NGrid :cols="3" :x-gap="8">
+        <NGrid cols="1 s:3" :x-gap="8" :y-gap="8" responsive="screen">
           <NGi>
             <NStatistic label="里程" :value="`${plannedRoute.distanceKm} km`" />
           </NGi>
