@@ -3,7 +3,10 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import { NCard, NGi, NGrid, NStatistic, NText } from "naive-ui";
 import { configureAmapSecurity } from "../amapSecurityConfig";
 import { loadAmap, type AmapMap, type AmapNamespace, type AmapOverlay } from "../amapLoader";
-import type { PlannedRoute } from "../api/publishingApi";
+import type { ElevationPoint, PlannedRoute } from "../api/publishingApi";
+import { wgs84ToGcj02 } from "../coordinateConverter";
+import { calculateMaxElevationGrade, formatGrade } from "../elevationGrade";
+import ElevationProfileChart from "./ElevationProfileChart.vue";
 
 const props = defineProps<{
   plannedRoute: PlannedRoute | null;
@@ -22,12 +25,51 @@ const mapReady = ref(false);
 let amap: AmapNamespace | null = null;
 let map: AmapMap | null = null;
 let routeOverlays: AmapOverlay[] = [];
+let elevationHoverMarker: AmapOverlay | null = null;
 
 const centerText = computed(() => `${chengduCenter[0]},${chengduCenter[1]}`);
+const maxGradeText = computed(() => {
+  const maxGrade = calculateMaxElevationGrade(props.plannedRoute?.elevation.points ?? []);
+  return maxGrade === null ? "--" : formatGrade(maxGrade);
+});
 
 const clearRouteOverlays = () => {
   routeOverlays.forEach((overlay) => overlay.setMap?.(null));
   routeOverlays = [];
+};
+
+const clearElevationHoverMarker = () => {
+  elevationHoverMarker?.setMap?.(null);
+  elevationHoverMarker = null;
+};
+
+const onElevationHover = (point: ElevationPoint | null) => {
+  if (!point) {
+    clearElevationHoverMarker();
+    return;
+  }
+
+  if (!amap || !map) {
+    return;
+  }
+
+  const gcj02 = wgs84ToGcj02(point);
+  const position: [number, number] = [gcj02.lng, gcj02.lat];
+  if (elevationHoverMarker) {
+    elevationHoverMarker.setCenter?.(position);
+    return;
+  }
+
+  elevationHoverMarker = new amap.CircleMarker({
+    center: position,
+    radius: 6,
+    strokeColor: "#ffffff",
+    strokeWeight: 2,
+    fillColor: "#0f766e",
+    fillOpacity: 1,
+    zIndex: 120,
+  });
+  elevationHoverMarker.setMap?.(map);
 };
 
 const drawRoute = () => {
@@ -98,6 +140,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  clearElevationHoverMarker();
   clearRouteOverlays();
   map?.destroy?.();
   map = null;
@@ -105,47 +148,56 @@ onBeforeUnmount(() => {
 
 watch(
   () => props.plannedRoute,
-  () => drawRoute(),
+  () => {
+    clearElevationHoverMarker();
+    drawRoute();
+  },
   { deep: true },
 );
 </script>
 
 <template>
   <section class="route-map">
-    <div
-      ref="mapContainer"
-      class="map-shell"
-      data-testid="route-map-canvas"
-      :data-amap-configured="String(amapJsApiConfigured)"
-      :data-default-center="centerText"
-    >
-      <div v-if="!amapJsApiConfigured" class="map-state">
-        缺少高德 JS Key，默认地点为成都市
+    <div class="route-map-canvas-stage">
+      <div
+        ref="mapContainer"
+        class="map-shell"
+        data-testid="route-map-canvas"
+        :data-amap-configured="String(amapJsApiConfigured)"
+        :data-default-center="centerText"
+      >
+        <div v-if="!amapJsApiConfigured" class="map-state">
+          缺少高德 JS Key，默认地点为成都市
+        </div>
+        <div v-else-if="!mapReady && !mapLoadFailed" class="map-state map-state-loading">
+          二维地图加载中，默认地点为成都市
+        </div>
       </div>
-      <div v-else-if="!mapReady && !mapLoadFailed" class="map-state map-state-loading">
-        二维地图加载中，默认地点为成都市
-      </div>
+      <NCard v-if="plannedRoute" class="route-map-overlay" :title="plannedRoute.routeName" size="small">
+        <NGrid :cols="3" :x-gap="8">
+          <NGi>
+            <NStatistic label="里程" :value="`${plannedRoute.distanceKm} km`" />
+          </NGi>
+          <NGi>
+            <NStatistic
+              label="累计爬升"
+              :value="plannedRoute.elevation.status === 'success'
+                ? `${plannedRoute.elevation.elevationGainM ?? 0} m`
+                : '--'"
+            />
+          </NGi>
+          <NGi>
+            <NStatistic label="最大坡度" :value="maxGradeText" />
+          </NGi>
+        </NGrid>
+      </NCard>
+      <NCard v-else class="route-map-overlay route-map-overlay-empty" title="成都市" size="small">
+        <NText depth="3">默认地图中心，生成路线后将在地图上绘制骑行路线。</NText>
+      </NCard>
     </div>
-    <NCard v-if="plannedRoute" class="route-map-overlay" :title="plannedRoute.routeName" size="small">
-      <NGrid :cols="3" :x-gap="8">
-        <NGi>
-          <NStatistic label="里程" :value="`${plannedRoute.distanceKm} km`" />
-        </NGi>
-        <NGi>
-          <NStatistic
-            label="累计爬升"
-            :value="plannedRoute.elevation.status === 'success'
-              ? `${plannedRoute.elevation.elevationGainM ?? 0} m`
-              : '--'"
-          />
-        </NGi>
-        <NGi v-if="plannedRoute.estimatedDurationMin">
-          <NStatistic label="预计耗时" :value="`${plannedRoute.estimatedDurationMin} 分钟`" />
-        </NGi>
-      </NGrid>
-    </NCard>
-    <NCard v-else class="route-map-overlay route-map-overlay-empty" title="成都市" size="small">
-      <NText depth="3">默认地图中心，生成路线后将在地图上绘制骑行路线。</NText>
-    </NCard>
+    <ElevationProfileChart
+      :points="plannedRoute?.elevation.points ?? []"
+      @hover-point="onElevationHover"
+    />
   </section>
 </template>

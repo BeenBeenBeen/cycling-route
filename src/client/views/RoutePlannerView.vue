@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useNotification } from "naive-ui";
 import { useRouter } from "vue-router";
 import {
@@ -11,24 +11,29 @@ import {
   searchPlaces,
 } from "../api/publishingApi";
 import GpxDownloadPanel from "../components/GpxDownloadPanel.vue";
-import PlaceCandidateSelector from "../components/PlaceCandidateSelector.vue";
 import RouteMap from "../components/RouteMap.vue";
 import RoutePlannerForm from "../components/RoutePlannerForm.vue";
 import RouteSummaryBar from "../components/RouteSummaryBar.vue";
-import WorkflowActions from "../components/WorkflowActions.vue";
 import { writeRoutePublishDraft } from "../stores/routePublishDraftStore";
+import {
+  readRoutePlannerSession,
+  writeRoutePlannerSession,
+} from "../stores/routePlannerSessionStore";
 
 type LoadingAction = "" | "searchPlaces" | "generateRoute" | "generateGpx";
 
 const router = useRouter();
 const notification = useNotification();
+const session = readRoutePlannerSession();
+const startQuery = ref(session?.startQuery ?? "");
+const endQuery = ref(session?.endQuery ?? "");
 const startCandidates = ref<PlaceCandidate[]>([]);
 const endCandidates = ref<PlaceCandidate[]>([]);
-const selectedStart = ref<PlaceCandidate | null>(null);
-const selectedEnd = ref<PlaceCandidate | null>(null);
-const plannedRoute = ref<PlannedRoute | null>(null);
-const gpxPath = ref("");
-const gpxUrl = ref("");
+const selectedStart = ref<PlaceCandidate | null>(session?.selectedStart ?? null);
+const selectedEnd = ref<PlaceCandidate | null>(session?.selectedEnd ?? null);
+const plannedRoute = ref<PlannedRoute | null>(session?.plannedRoute ?? null);
+const gpxPath = ref(session?.gpxPath ?? "");
+const gpxUrl = ref(session?.gpxUrl ?? "");
 const loadingAction = ref<LoadingAction>("");
 
 const canGenerateRoute = computed(
@@ -61,6 +66,25 @@ const runAction = async (action: LoadingAction, work: () => Promise<void>) => {
     loadingAction.value = "";
   }
 };
+
+watch(
+  [startQuery, endQuery, startCandidates, endCandidates, selectedStart, selectedEnd, plannedRoute, gpxPath, gpxUrl],
+  () => {
+    writeRoutePlannerSession({
+      startQuery: startQuery.value,
+      endQuery: endQuery.value,
+      startCandidates: startCandidates.value,
+      endCandidates: endCandidates.value,
+      selectedStart: selectedStart.value,
+      selectedEnd: selectedEnd.value,
+      plannedRoute: plannedRoute.value,
+      gpxPath: gpxPath.value,
+      gpxUrl: gpxUrl.value,
+      updatedAt: new Date().toISOString(),
+    });
+  },
+  { deep: true, immediate: true },
+);
 
 const onSearchPlaces = (payload: { startQuery: string; endQuery: string }) =>
   runAction("searchPlaces", async () => {
@@ -131,44 +155,38 @@ const onSendToPublisher = async () => {
     </section>
 
     <aside class="route-planner-panel" data-testid="route-planner-panel">
-      <RoutePlannerForm @search="onSearchPlaces" />
-      <PlaceCandidateSelector
+        <RoutePlannerForm
+        :initial-start-query="startQuery"
+        :initial-end-query="endQuery"
         :start-candidates="startCandidates"
         :end-candidates="endCandidates"
         :selected-start="selectedStart"
         :selected-end="selectedEnd"
+        :loading="loadingAction === 'searchPlaces' || loadingAction === 'generateRoute'"
+        :can-generate-route="canGenerateRoute"
+        @update:start-query="startQuery = $event"
+        @update:end-query="endQuery = $event"
+        @search="onSearchPlaces"
         @select-start="selectedStart = $event"
         @select-end="selectedEnd = $event"
+        @generate-route="onGenerateRoute"
       />
 
       <RouteSummaryBar
         :planned-route="plannedRoute"
         :gpx-path="gpxPath"
         :gpx-url="gpxUrl"
+        :loading="loadingAction !== ''"
+        @send-to-publisher="onSendToPublisher"
       />
 
       <GpxDownloadPanel
         :gpx-path="gpxPath"
         :gpx-url="gpxUrl"
         :loading="loadingAction === 'generateGpx'"
+        :can-generate="plannedRoute !== null"
+        @generate="onGenerateGpx"
       />
-
-      <div class="route-planner-actions">
-        <WorkflowActions
-          :loading-action="loadingAction"
-          :has-post="false"
-          :has-cover="false"
-          :can-generate-route="canGenerateRoute"
-          :has-route="plannedRoute !== null"
-          :can-send-to-publisher="plannedRoute !== null"
-          markdown-path=""
-          :publish-started="false"
-          :show-publish-actions="false"
-          @generate-route="onGenerateRoute"
-          @generate-gpx="onGenerateGpx"
-          @send-to-publisher="onSendToPublisher"
-        />
-      </div>
     </aside>
   </section>
 </template>

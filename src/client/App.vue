@@ -28,7 +28,7 @@ import { naiveThemeOverrides } from "./naiveTheme";
                 </div>
                 <AppNav />
               </NLayoutHeader>
-              <NLayoutContent>
+              <NLayoutContent class="workspace-content" data-testid="workspace-content">
                 <RouterView />
               </NLayoutContent>
             </NLayout>
@@ -46,15 +46,39 @@ import { naiveThemeOverrides } from "./naiveTheme";
   font-family: Inter, "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
 }
 
+html,
+body,
+#app {
+  height: 100%;
+}
+
 body {
   margin: 0;
+  overflow: hidden;
 }
 
 .workspace {
-  min-height: 100vh;
+  height: 100dvh;
+}
+
+.workspace > .n-layout-scroll-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.workspace-content {
+  flex: 1;
+  min-height: 0;
+}
+
+.workspace-content > .n-layout-scroll-container {
+  height: 100%;
 }
 
 .topbar {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -80,28 +104,35 @@ body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 420px;
   gap: 16px;
+  box-sizing: border-box;
+  height: 100%;
   max-width: 1600px;
   margin: 0 auto;
   padding: 16px;
 }
 
 .route-planner-map-stage {
-  min-height: calc(100vh - 112px);
+  min-height: 0;
 }
 
 .route-planner-map-stage .route-map,
-.route-planner-map-stage .map-shell,
 .route-planner-map-stage .map-empty {
   height: 100%;
-  min-height: calc(100vh - 112px);
+  min-height: 0;
 }
 
 .route-planner-panel {
   display: grid;
   align-content: start;
   gap: 12px;
-  max-height: calc(100vh - 112px);
+  height: 100%;
+  min-height: 0;
   overflow: auto;
+  scrollbar-width: none;
+}
+
+.route-planner-panel::-webkit-scrollbar {
+  display: none;
 }
 
 .layout {
@@ -176,12 +207,32 @@ body {
 
 .route-map {
   position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 12px;
   padding: 0;
 }
 
-.route-map > .map-shell {
+.route-map-canvas-stage {
+  position: relative;
+  min-height: 0;
+}
+
+.route-map-canvas-stage > .map-shell {
+  width: 100%;
+  height: 100%;
   border: 0;
   border-radius: 8px;
+}
+
+.route-map-overlay,
+.elevation-profile-overlay {
+  border: 1px solid #dbe7e1;
+  border-radius: 8px;
+  background: rgba(248, 251, 249, 0.95);
+  box-shadow: 0 14px 34px rgba(15, 118, 110, 0.14);
+  padding: 14px;
+  pointer-events: auto;
 }
 
 .route-map-overlay {
@@ -190,11 +241,11 @@ body {
   bottom: 16px;
   z-index: 2;
   width: min(420px, calc(100% - 32px));
-  border: 1px solid #dbe7e1;
-  border-radius: 8px;
-  background: rgba(248, 251, 249, 0.95);
-  box-shadow: 0 14px 34px rgba(15, 118, 110, 0.14);
-  padding: 14px;
+}
+
+.elevation-profile-overlay {
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .publisher-empty,
@@ -236,6 +287,31 @@ body {
 }
 
 @media (max-width: 960px) {
+  html,
+  body,
+  #app {
+    height: auto;
+    min-height: 100%;
+  }
+
+  body {
+    overflow: auto;
+  }
+
+  .workspace {
+    height: auto;
+    min-height: 100dvh;
+  }
+
+  .workspace > .n-layout-scroll-container {
+    display: block;
+    overflow: visible;
+  }
+
+  .workspace-content > .n-layout-scroll-container {
+    height: auto;
+  }
+
   .topbar {
     display: grid;
     gap: 12px;
@@ -243,13 +319,13 @@ body {
 
   .route-planner-view {
     grid-template-columns: 1fr;
+    height: auto;
   }
 
   .route-planner-map-stage,
   .route-planner-map-stage .route-map,
-  .route-planner-map-stage .map-shell,
   .route-planner-map-stage .map-empty {
-    min-height: 360px;
+    min-height: 520px;
   }
 
   .route-planner-panel {
@@ -263,6 +339,14 @@ body {
 
   .side-column {
     order: -1;
+  }
+}
+
+@media (max-width: 640px) {
+  .route-planner-map-stage,
+  .route-planner-map-stage .route-map,
+  .route-planner-map-stage .map-empty {
+    min-height: 420px;
   }
 }
 </style>
