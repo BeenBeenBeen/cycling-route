@@ -1,9 +1,22 @@
 // @vitest-environment jsdom
 import { mount } from "@vue/test-utils";
+import { NGrid } from "naive-ui";
 import { describe, expect, it } from "vitest";
 import RouteForm from "../../src/client/components/RouteForm.vue";
 
 describe("RouteForm", () => {
+  it("uses mobile-first responsive grids", () => {
+    const wrapper = mount(RouteForm);
+
+    expect(wrapper.findAllComponents(NGrid).map((grid) => grid.props("cols"))).toEqual([
+      "1 s:2 m:3",
+      "1 s:2 m:4",
+      "1 s:2 m:3",
+      "1 s:2 m:3",
+      "1 s:2",
+    ]);
+  });
+
   it("emits route input with textarea lists and numeric fields converted", async () => {
     const wrapper = mount(RouteForm);
 

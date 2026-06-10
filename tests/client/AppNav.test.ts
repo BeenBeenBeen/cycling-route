@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { mount } from "@vue/test-utils";
+import { NMenu } from "naive-ui";
 import { createMemoryHistory, createRouter } from "vue-router";
 import { describe, expect, it } from "vitest";
 import AppNav from "../../src/client/components/AppNav.vue";
@@ -30,6 +31,7 @@ describe("AppNav", () => {
     expect(wrapper.text()).toContain("小红书发布");
     expect(wrapper.get('[data-testid="nav-route-planner"]').attributes("href")).toBe("/route-planner");
     expect(wrapper.get('[data-testid="nav-publisher"]').attributes("href")).toBe("/publisher");
+    expect(wrapper.getComponent(NMenu).props("responsive")).toBe(false);
   });
 
   it("marks the active route", async () => {

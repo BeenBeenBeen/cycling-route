@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { mount } from "@vue/test-utils";
+import { NGrid } from "naive-ui";
 import { describe, expect, it } from "vitest";
 import RouteMap from "../../src/client/components/RouteMap.vue";
 
@@ -82,5 +83,6 @@ describe("RouteMap", () => {
     expect(wrapper.get('[data-testid="route-map-canvas"]').attributes()).toHaveProperty(
       "data-amap-configured",
     );
+    expect(wrapper.getComponent(NGrid).props("cols")).toBe("1 s:3");
   });
 });

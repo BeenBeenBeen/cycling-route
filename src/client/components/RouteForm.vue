@@ -113,7 +113,7 @@ defineExpose({ getRoute: buildRoute });
 <template>
   <NForm class="route-form" :model="form" label-placement="top" @submit.prevent="onSubmit">
     <NCard title="基础路线" size="small">
-      <NGrid :cols="3" :x-gap="12" responsive="screen">
+      <NGrid cols="1 s:2 m:3" :x-gap="12" responsive="screen">
         <NGi>
           <NFormItem label="路线名称" path="routeName">
             <NInput v-model:value="form.routeName" :input-props="{ name: 'routeName' }" />
@@ -133,7 +133,7 @@ defineExpose({ getRoute: buildRoute });
     </NCard>
 
     <NCard title="数据指标" size="small">
-      <NGrid :cols="4" :x-gap="12" responsive="screen">
+      <NGrid cols="1 s:2 m:4" :x-gap="12" responsive="screen">
         <NGi>
           <NFormItem label="总里程 km" path="distanceKm">
             <NInputNumber v-model:value="form.distanceKm" :min="0.1" :step="0.1" :input-props="{ name: 'distanceKm' }" />
@@ -158,7 +158,7 @@ defineExpose({ getRoute: buildRoute });
     </NCard>
 
     <NCard title="必填内容" size="small">
-      <NGrid :cols="3" :x-gap="12" responsive="screen">
+      <NGrid cols="1 s:2 m:3" :x-gap="12" responsive="screen">
         <NGi>
           <NFormItem label="路线亮点" path="highlights">
             <NInput v-model:value="form.highlights" type="textarea" :autosize="{ minRows: 3 }" :input-props="{ name: 'highlights' }" />
@@ -178,7 +178,7 @@ defineExpose({ getRoute: buildRoute });
     </NCard>
 
     <NCard title="推荐信息" size="small">
-      <NGrid :cols="3" :x-gap="12" responsive="screen">
+      <NGrid cols="1 s:2 m:3" :x-gap="12" responsive="screen">
         <NGi>
           <NFormItem label="推荐季节" path="bestSeason">
             <NInput v-model:value="form.bestSeason" :input-props="{ name: 'bestSeason' }" />
@@ -208,7 +208,7 @@ defineExpose({ getRoute: buildRoute });
     </NCard>
 
     <NCard title="补充内容" size="small">
-      <NGrid :cols="2" :x-gap="12" responsive="screen">
+      <NGrid cols="1 s:2" :x-gap="12" responsive="screen">
         <NGi>
           <NFormItem label="拍照点" path="photoSpots">
             <NInput v-model:value="form.photoSpots" type="textarea" :autosize="{ minRows: 3 }" :input-props="{ name: 'photoSpots' }" />

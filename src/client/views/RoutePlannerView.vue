@@ -155,7 +155,8 @@ const onSendToPublisher = async () => {
     </section>
 
     <aside class="route-planner-panel" data-testid="route-planner-panel">
-        <RoutePlannerForm
+      <RoutePlannerForm
+        class="route-planner-form-section"
         :initial-start-query="startQuery"
         :initial-end-query="endQuery"
         :start-candidates="startCandidates"
@@ -173,6 +174,7 @@ const onSendToPublisher = async () => {
       />
 
       <RouteSummaryBar
+        class="route-planner-summary-section"
         :planned-route="plannedRoute"
         :gpx-path="gpxPath"
         :gpx-url="gpxUrl"
@@ -181,6 +183,7 @@ const onSendToPublisher = async () => {
       />
 
       <GpxDownloadPanel
+        class="route-planner-gpx-section"
         :gpx-path="gpxPath"
         :gpx-url="gpxUrl"
         :loading="loadingAction === 'generateGpx'"

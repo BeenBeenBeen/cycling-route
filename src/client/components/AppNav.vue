@@ -44,7 +44,7 @@ const navOptions: MenuOption[] = [
       mode="horizontal"
       :value="activeKey"
       :options="navOptions"
-      responsive
+      :responsive="false"
     />
   </nav>
 </template>
