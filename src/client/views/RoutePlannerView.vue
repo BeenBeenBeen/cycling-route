@@ -14,7 +14,10 @@ import GpxDownloadPanel from "../components/GpxDownloadPanel.vue";
 import RouteMap from "../components/RouteMap.vue";
 import RoutePlannerForm from "../components/RoutePlannerForm.vue";
 import RouteSummaryBar from "../components/RouteSummaryBar.vue";
-import { writeRoutePublishDraft } from "../stores/routePublishDraftStore";
+import {
+  clearRoutePublishDraft,
+  writeRoutePublishDraft,
+} from "../stores/routePublishDraftStore";
 import {
   readRoutePlannerSession,
   writeRoutePlannerSession,
@@ -80,6 +83,25 @@ watch(
       plannedRoute: plannedRoute.value,
       gpxPath: gpxPath.value,
       gpxUrl: gpxUrl.value,
+      updatedAt: new Date().toISOString(),
+    });
+  },
+  { deep: true, immediate: true },
+);
+
+watch(
+  [plannedRoute, gpxPath, gpxUrl],
+  () => {
+    if (!plannedRoute.value) {
+      clearRoutePublishDraft();
+      return;
+    }
+
+    writeRoutePublishDraft({
+      plannedRoute: plannedRoute.value,
+      routeFacts: plannedRoute.value.routeFacts,
+      gpxPath: gpxPath.value || undefined,
+      gpxUrl: gpxUrl.value || undefined,
       updatedAt: new Date().toISOString(),
     });
   },

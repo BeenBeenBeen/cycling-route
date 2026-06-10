@@ -101,7 +101,7 @@ const formatDistance = (distanceM: number) => {
   return `${Number.isInteger(distanceKm) ? distanceKm : distanceKm.toFixed(1)} km`;
 };
 
-const onMouseMove = (event: MouseEvent) => {
+const onPointerMove = (event: PointerEvent) => {
   if (chartPoints.value.length === 0) {
     return;
   }
@@ -111,15 +111,15 @@ const onMouseMove = (event: MouseEvent) => {
     return;
   }
 
-  const mouseX = ((event.clientX - bounds.left) / bounds.width) * chart.width;
+  const pointerX = ((event.clientX - bounds.left) / bounds.width) * chart.width;
   const nearestPoint = chartPoints.value.reduce((nearest, point) =>
-    Math.abs(point.x - mouseX) < Math.abs(nearest.x - mouseX) ? point : nearest,
+    Math.abs(point.x - pointerX) < Math.abs(nearest.x - pointerX) ? point : nearest,
   );
   hoveredPoint.value = nearestPoint;
   emit("hover-point", nearestPoint);
 };
 
-const onMouseLeave = () => {
+const clearHoveredPoint = () => {
   hoveredPoint.value = null;
   emit("hover-point", null);
 };
@@ -145,8 +145,9 @@ const tooltipX = computed(() => {
       :viewBox="`0 0 ${chart.width} ${chart.height}`"
       role="img"
       aria-label="路线海拔剖面折线图"
-      @mousemove="onMouseMove"
-      @mouseleave="onMouseLeave"
+      @pointermove="onPointerMove"
+      @pointerleave="clearHoveredPoint"
+      @pointercancel="clearHoveredPoint"
     >
       <path
         v-if="elevationRange"

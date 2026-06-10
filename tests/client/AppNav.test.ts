@@ -2,7 +2,7 @@
 import { mount } from "@vue/test-utils";
 import { NMenu } from "naive-ui";
 import { createMemoryHistory, createRouter } from "vue-router";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import AppNav from "../../src/client/components/AppNav.vue";
 
 const mountWithRoute = async (path: string) => {
@@ -16,16 +16,19 @@ const mountWithRoute = async (path: string) => {
   router.push(path);
   await router.isReady();
 
-  return mount(AppNav, {
-    global: {
-      plugins: [router],
-    },
-  });
+  return {
+    router,
+    wrapper: mount(AppNav, {
+      global: {
+        plugins: [router],
+      },
+    }),
+  };
 };
 
 describe("AppNav", () => {
   it("renders route planner and publisher links", async () => {
-    const wrapper = await mountWithRoute("/route-planner");
+    const { wrapper } = await mountWithRoute("/route-planner");
 
     expect(wrapper.text()).toContain("路线规划");
     expect(wrapper.text()).toContain("小红书发布");
@@ -35,8 +38,16 @@ describe("AppNav", () => {
   });
 
   it("marks the active route", async () => {
-    const wrapper = await mountWithRoute("/publisher");
+    const { wrapper } = await mountWithRoute("/publisher");
 
     expect(wrapper.get('[data-testid="nav-publisher"]').classes()).toContain("active");
+  });
+
+  it("switches views through vue router without reloading the page", async () => {
+    const { router, wrapper } = await mountWithRoute("/route-planner");
+
+    await wrapper.get('[data-testid="nav-publisher"]').trigger("click");
+
+    await vi.waitFor(() => expect(router.currentRoute.value.path).toBe("/publisher"));
   });
 });
