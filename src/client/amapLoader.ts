@@ -6,12 +6,14 @@ export type AmapMap = {
 
 export type AmapOverlay = {
   setMap?: (map: AmapMap | null) => void;
+  setCenter?: (position: [number, number]) => void;
 };
 
 export type AmapNamespace = {
   Map: new (container: HTMLElement, options: Record<string, unknown>) => AmapMap;
   Marker: new (options: Record<string, unknown>) => AmapOverlay;
   Polyline: new (options: Record<string, unknown>) => AmapOverlay;
+  CircleMarker: new (options: Record<string, unknown>) => AmapOverlay;
   Scale?: new () => unknown;
   ToolBar?: new () => unknown;
 };

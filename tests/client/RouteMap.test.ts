@@ -34,7 +34,11 @@ const plannedRoute = {
     sampleIntervalM: 100,
     batchSize: 100,
     gainNoiseThresholdM: 3,
-    points: [],
+    points: [
+      { distanceM: 0, lng: 104.01, lat: 30.756, ele: 480 },
+      { distanceM: 6_000, lng: 103.8, lat: 30.82, ele: 620 },
+      { distanceM: 12_350, lng: 103.566, lat: 30.903, ele: 540 },
+    ],
     elevationGainM: 120,
   },
   routeFacts: {
@@ -58,6 +62,8 @@ describe("RouteMap", () => {
     const canvas = wrapper.get('[data-testid="route-map-canvas"]');
     expect(canvas.attributes("data-default-center")).toBe("104.0668,30.5728");
     expect(wrapper.text()).toContain("成都市");
+    expect(wrapper.find('[data-testid="elevation-profile-chart"]').exists()).toBe(true);
+    expect(wrapper.text()).toContain("暂无海拔数据");
   });
 
   it("renders route facts when a planned route exists", () => {
@@ -66,6 +72,13 @@ describe("RouteMap", () => {
     expect(wrapper.text()).toContain("犀浦到青城山");
     expect(wrapper.text()).toContain("12.35 km");
     expect(wrapper.text()).toContain("120 m");
+    expect(wrapper.text()).toContain("最大坡度");
+    expect(wrapper.text()).toContain("2.3%");
+    expect(wrapper.text()).not.toContain("预计耗时");
+    expect(wrapper.find('[data-testid="route-map-overlays"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="elevation-profile-chart"]').exists()).toBe(true);
+    expect(wrapper.findAll('[data-testid="elevation-contour-line"]')).toHaveLength(5);
+    expect(wrapper.get('[data-testid="elevation-profile-line"]').attributes("points")).toBeTruthy();
     expect(wrapper.get('[data-testid="route-map-canvas"]').attributes()).toHaveProperty(
       "data-amap-configured",
     );

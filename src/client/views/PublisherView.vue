@@ -165,6 +165,7 @@ const onAssistPublish = () =>
           :gpx-path="gpxPath"
           :gpx-url="gpxUrl"
           :loading="false"
+          :can-generate="false"
         />
         <CoverPreview
           :cover-path="coverUrl"

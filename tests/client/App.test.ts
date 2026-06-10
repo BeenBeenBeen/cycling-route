@@ -28,4 +28,12 @@ describe("App shell", () => {
     expect(wrapper.text()).toContain("小红书发布");
     expect(wrapper.find('[data-testid="publisher-view"]').exists()).toBe(true);
   });
+
+  it("provides a bounded content area for viewport-height pages", async () => {
+    const wrapper = await mountApp();
+
+    expect(wrapper.get('[data-testid="workspace-content"]').classes()).toContain(
+      "workspace-content",
+    );
+  });
 });
