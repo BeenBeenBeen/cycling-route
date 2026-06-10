@@ -75,6 +75,8 @@ describe("RouteMap", () => {
     expect(wrapper.text()).toContain("120 m");
     expect(wrapper.text()).toContain("最大坡度");
     expect(wrapper.text()).toContain("2.3%");
+    expect(wrapper.get(".route-map-overlay").classes()).toContain("desktop-map-overlay");
+    expect(wrapper.get(".route-map-overlay").classes()).toContain("uniform-metric-card");
     expect(wrapper.text()).not.toContain("预计耗时");
     expect(wrapper.find('[data-testid="route-map-overlays"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="elevation-profile-chart"]').exists()).toBe(true);
@@ -84,5 +86,6 @@ describe("RouteMap", () => {
       "data-amap-configured",
     );
     expect(wrapper.getComponent(NGrid).props("cols")).toBe("1 s:3");
+    expect(wrapper.getComponent(NGrid).classes()).toContain("mobile-horizontal-metrics");
   });
 });

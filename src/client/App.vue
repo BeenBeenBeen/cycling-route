@@ -55,6 +55,7 @@ import { naiveThemeOverrides } from "./naiveTheme";
 html,
 body,
 #app {
+  width: 100%;
   height: 100%;
   max-width: 100%;
 }
@@ -254,7 +255,28 @@ body {
 
 .elevation-profile-overlay {
   box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
   width: 100%;
+  overflow: hidden;
+}
+
+.elevation-profile-overlay .n-card__content {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.uniform-metric-card,
+.uniform-metric-card .n-card-header__main,
+.uniform-metric-card .n-statistic__label,
+.uniform-metric-card .n-statistic-value,
+.uniform-metric-card .n-statistic-value__content,
+.uniform-metric-card .n-statistic-value__suffix,
+.uniform-metric-card .n-button,
+.uniform-metric-card .n-tag,
+.uniform-metric-card .n-text {
+  font-size: 13px !important;
 }
 
 .publisher-empty,
@@ -305,11 +327,14 @@ body {
 
   body {
     overflow: auto;
+    overflow-x: hidden;
   }
 
   .workspace {
+    width: 100%;
     height: auto;
     min-height: 100dvh;
+    overflow-x: hidden;
   }
 
   .workspace > .n-layout-scroll-container {
@@ -348,6 +373,8 @@ body {
 
   .route-planner-view {
     grid-template-columns: 1fr;
+    width: 100%;
+    min-width: 0;
     height: auto;
     padding: 12px;
   }
@@ -384,6 +411,11 @@ body {
 }
 
 @media (max-width: 640px) {
+  .n-notification-wrapper {
+    width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px) !important;
+  }
+
   .topbar {
     gap: 8px;
     padding: 10px 12px;
@@ -426,6 +458,8 @@ body {
   }
 
   .route-map {
+    width: 100%;
+    min-width: 0;
     gap: 8px;
     overflow: visible;
   }
@@ -439,9 +473,8 @@ body {
     height: 300px;
   }
 
-  .route-map-overlay {
-    position: static;
-    width: 100%;
+  .desktop-map-overlay {
+    display: none;
   }
 
   .route-map-overlay,
@@ -463,13 +496,54 @@ body {
     min-height: 40px;
   }
 
-  .route-planner-view .n-statistic-value__content {
-    font-size: 18px;
+  .mobile-horizontal-metrics {
+    row-gap: 0 !important;
+  }
+
+  .mobile-horizontal-metrics > div {
+    min-width: 0;
+    padding: 10px 0;
+    border-bottom: 1px solid #e4ece7;
+  }
+
+  .mobile-horizontal-metrics > div:last-child {
+    border-bottom: 0;
+  }
+
+  .mobile-horizontal-metrics .n-statistic {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+  }
+
+  .mobile-horizontal-metrics .n-statistic__label {
+    flex: 0 1 auto;
+    margin-bottom: 0;
+  }
+
+  .mobile-horizontal-metrics .n-statistic-value {
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: right;
+  }
+
+  .mobile-horizontal-metrics .n-statistic-value__content {
+    display: block;
+    overflow-wrap: anywhere;
+  }
+
+  .distance-metrics > .n-statistic {
+    padding-bottom: 8px;
   }
 
   .distance-metrics-detail div {
     align-items: flex-start;
     flex-wrap: wrap;
+    min-height: 28px;
+    padding: 6px 0;
+    border-top: 1px solid #edf2ef;
   }
 
   .cover-frame {

@@ -27,6 +27,10 @@ describe("RouteSummaryBar", () => {
     });
 
     expect(wrapper.getComponent(NGrid).props("cols")).toBe("1 s:2");
+    expect(wrapper.getComponent(NGrid).classes()).toContain("mobile-horizontal-metrics");
+    expect(wrapper.get('[data-testid="route-summary-bar"]').classes()).toContain(
+      "uniform-metric-card",
+    );
   });
 
   it("renders empty route metrics before planning", () => {

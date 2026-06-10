@@ -214,7 +214,11 @@ const tooltipX = computed(() => {
 .elevation-profile-svg {
   display: block;
   width: 100%;
+  max-width: 100%;
+  height: auto;
   min-width: 0;
+  overflow: hidden;
+  touch-action: pan-y;
 }
 
 .chart-grid-line {
