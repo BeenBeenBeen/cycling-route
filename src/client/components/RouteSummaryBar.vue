@@ -31,8 +31,14 @@ const calorieText = computed(() => {
 </script>
 
 <template>
-  <NCard size="small" data-testid="route-summary-bar">
-    <NGrid cols="1 s:2" :x-gap="12" :y-gap="12" responsive="screen">
+  <NCard class="uniform-metric-card" size="small" data-testid="route-summary-bar">
+    <NGrid
+      class="mobile-horizontal-metrics"
+      cols="1 s:2"
+      :x-gap="12"
+      :y-gap="12"
+      responsive="screen"
+    >
       <NGi data-testid="distance-metrics">
         <section class="distance-metrics">
           <NStatistic label="距离" :value="`${plannedRoute?.distanceKm ?? 0} km`" />
@@ -99,7 +105,7 @@ const calorieText = computed(() => {
   gap: 4px;
   margin: 8px 0 0;
   color: #64748b;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .distance-metrics-detail div {

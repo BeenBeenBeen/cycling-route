@@ -173,8 +173,19 @@ watch(
           二维地图加载中，默认地点为成都市
         </div>
       </div>
-      <NCard v-if="plannedRoute" class="route-map-overlay" :title="plannedRoute.routeName" size="small">
-        <NGrid cols="1 s:3" :x-gap="8" :y-gap="8" responsive="screen">
+      <NCard
+        v-if="plannedRoute"
+        class="route-map-overlay desktop-map-overlay uniform-metric-card"
+        :title="plannedRoute.routeName"
+        size="small"
+      >
+        <NGrid
+          class="mobile-horizontal-metrics"
+          cols="1 s:3"
+          :x-gap="8"
+          :y-gap="8"
+          responsive="screen"
+        >
           <NGi>
             <NStatistic label="里程" :value="`${plannedRoute.distanceKm} km`" />
           </NGi>
@@ -191,7 +202,12 @@ watch(
           </NGi>
         </NGrid>
       </NCard>
-      <NCard v-else class="route-map-overlay route-map-overlay-empty" title="成都市" size="small">
+      <NCard
+        v-else
+        class="route-map-overlay route-map-overlay-empty desktop-map-overlay uniform-metric-card"
+        title="成都市"
+        size="small"
+      >
         <NText depth="3">默认地图中心，生成路线后将在地图上绘制骑行路线。</NText>
       </NCard>
     </div>
