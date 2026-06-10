@@ -168,6 +168,41 @@ describe("RoutePlannerView", () => {
     expect(wrapper.text()).toContain("data/routes/route-1.gpx");
   });
 
+  it("passes the planned route to publisher when using the navigation link", async () => {
+    localStorage.clear();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ startCandidates: [start], endCandidates: [end] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ route: plannedRoute }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { wrapper } = await mountShell();
+    await wrapper.get('[data-testid="start-query"]').setValue("犀浦");
+    await wrapper.get('[data-testid="end-query"]').setValue("青城山");
+    await wrapper.get('[data-testid="end-query"]').trigger("blur");
+    await vi.waitFor(() =>
+      expect(wrapper.find('[data-testid="start-candidate-B001"]').exists()).toBe(true),
+    );
+    await wrapper.get('[data-testid="start-candidate-B001"]').trigger("click");
+    await wrapper.get('[data-testid="end-candidate-B002"]').trigger("click");
+    await wrapper.get('[data-testid="generate-route"]').trigger("click");
+    await vi.waitFor(() => expect(wrapper.text()).toContain("12.35 km"));
+
+    await wrapper.get('[data-testid="nav-publisher"]').trigger("click");
+    await vi.waitFor(() => expect(wrapper.find('[data-testid="publisher-view"]').exists()).toBe(true));
+
+    expect(wrapper.get('input[name="routeName"]').element).toHaveProperty(
+      "value",
+      "犀浦到青城山",
+    );
+  });
+
   it("shows trailing input indicators while place search is pending", async () => {
     let resolveSearch: ((value: unknown) => void) | undefined;
     const fetchMock = vi.fn().mockReturnValue(

@@ -53,7 +53,14 @@ describe("ElevationProfileChart", () => {
       toJSON: () => ({}),
     });
 
-    await svg.trigger("mousemove", { clientX: 211, clientY: 30 });
+    const pointerMove = new MouseEvent("pointermove", {
+      clientX: 211,
+      clientY: 30,
+      bubbles: true,
+    });
+    Object.defineProperty(pointerMove, "pointerType", { value: "mouse" });
+    svg.element.dispatchEvent(pointerMove);
+    await wrapper.vm.$nextTick();
 
     const tooltip = wrapper.get('[data-testid="elevation-profile-tooltip"]');
     expect(tooltip.findAll("text")).toHaveLength(3);
@@ -62,9 +69,40 @@ describe("ElevationProfileChart", () => {
     expect(tooltip.text()).toContain("坡度：0.6%");
     expect(wrapper.emitted("hover-point")?.at(-1)?.[0]).toMatchObject(points[1]);
 
-    await svg.trigger("mouseleave");
+    svg.element.dispatchEvent(new MouseEvent("pointerleave"));
+    await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="elevation-profile-tooltip"]').exists()).toBe(false);
     expect(wrapper.emitted("hover-point")?.at(-1)).toEqual([null]);
+  });
+
+  it("updates the hovered point while sliding over the chart on touch devices", async () => {
+    const wrapper = mount(ElevationProfileChart, { props: { points } });
+    const svg = wrapper.get("svg");
+    vi.spyOn(svg.element, "getBoundingClientRect").mockReturnValue({
+      x: 0,
+      y: 0,
+      top: 0,
+      left: 0,
+      right: 398,
+      bottom: 76,
+      width: 398,
+      height: 76,
+      toJSON: () => ({}),
+    });
+
+    const pointerMove = new MouseEvent("pointermove", {
+      clientX: 397,
+      clientY: 30,
+      bubbles: true,
+    });
+    Object.defineProperty(pointerMove, "pointerType", { value: "touch" });
+    svg.element.dispatchEvent(pointerMove);
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.emitted("hover-point")?.at(-1)?.[0]).toMatchObject(points[2]);
+    expect(wrapper.get('[data-testid="elevation-profile-tooltip"]').text()).toContain(
+      "距离：10 km",
+    );
   });
 
   it("shows an empty state when no elevation samples are available", () => {
